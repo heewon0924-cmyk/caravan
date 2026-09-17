@@ -4,6 +4,7 @@ import com.caravan.data.WorldData;
 import com.caravan.event.EventEngine;
 import com.caravan.event.WorldEvent;
 import com.caravan.npc.NpcFleet;
+import com.caravan.rumor.RumorMill;
 import com.caravan.world.World;
 import com.caravan.world.WorldClock;
 
@@ -33,6 +34,7 @@ public final class Simulation {
     private final WorldData data;
     private final EventEngine events;
     private final NpcFleet npcs;
+    private final RumorMill mill;
     private final long seed;
 
     public Simulation(WorldData data) {
@@ -51,6 +53,7 @@ public final class Simulation {
         this.world = new World(data);
         this.events = new EventEngine(data, seed);
         this.npcs = new NpcFleet(data);
+        this.mill = new RumorMill(data, world, events, seed ^ 0x5L);
     }
 
     public void advanceTo(long targetTick) {
@@ -70,9 +73,18 @@ public final class Simulation {
         advanceTo(world.tick() + Math.round(hours * 60 / WorldClock.MINUTES_PER_TICK));
     }
 
-    /** 새 상단 하나를 이 세계에 들인다. */
+    /** 새 상단 하나를 이 세계에 들인다. 소문도 같이 듣게 된다. */
     public Company newCompany(String name, String startCityId) {
-        return new Company(world, data, name, startCityId);
+        return new Company(world, data, name, startCityId, mill);
+    }
+
+    /** 소문을 못 듣는 상단. 정보의 값어치를 재는 대조군이다. */
+    public Company newDeafCompany(String name, String startCityId) {
+        return new Company(world, data, name, startCityId, null);
+    }
+
+    public RumorMill rumorMill() {
+        return mill;
     }
 
     public List<WorldEvent> activeEvents() {

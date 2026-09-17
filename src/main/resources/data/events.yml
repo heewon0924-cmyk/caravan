@@ -22,7 +22,7 @@ events:
     goods: [wheat]
     productionMultiple: 0.4
     durationHours: 72
-    forecastHours: 48
+    forecastHours: 8
     text: 하른의 밀 농사가 크게 망했다
 
   - id: good-harvest
@@ -32,7 +32,7 @@ events:
     goods: [wheat]
     productionMultiple: 1.8
     durationHours: 72
-    forecastHours: 48
+    forecastHours: 8
     text: 하른에 밀이 넘치게 났다
 
   # 아홉 중 하나만 예고가 없다. 하나쯤은 아무도 못 맞히는 사고가 있어야
@@ -54,7 +54,7 @@ events:
     goods: [iron]
     productionMultiple: 2.0
     durationHours: 96
-    forecastHours: 24
+    forecastHours: 5
     text: 카르덴에서 새 광맥이 나왔다
 
   - id: merchant-fleet
@@ -64,7 +64,7 @@ events:
     goods: [spice, cloth]
     stockBonusRatio: 0.8
     durationHours: 1
-    forecastHours: 24
+    forecastHours: 5
     text: 셀리아에 대규모 상선이 들어온다
 
   - id: port-blockade
@@ -74,7 +74,7 @@ events:
     goods: [spice, cloth]
     productionMultiple: 0.0
     durationHours: 72
-    forecastHours: 24
+    forecastHours: 5
     text: 셀리아 항구가 막혔다
 
   - id: bandits
@@ -83,7 +83,7 @@ events:
     routes: [wolf-pass, mountain-path]
     dangerMultiple: 2.0
     durationHours: 48
-    forecastHours: 24
+    forecastHours: 5
     text: 산길에 도적이 들끓는다
 
   - id: festival
@@ -91,7 +91,7 @@ events:
     weight: 10
     consumptionMultiple: 1.5
     durationHours: 24
-    forecastHours: 48
+    forecastHours: 8
     text: 축제가 열린다
 
   # 위험과 기회가 같은 사건에서 나온다 — 늑대고개가 위험해지는 동시에
@@ -106,5 +106,5 @@ events:
     dangerMultiple: 1.8
     jobFamilyBonus: 해양
     durationHours: 72
-    forecastHours: 24
+    forecastHours: 5
     text: 앞바다에 해적이 나타났다

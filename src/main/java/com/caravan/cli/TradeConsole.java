@@ -1,9 +1,11 @@
 package com.caravan.cli;
 
 import com.caravan.app.Company;
+import com.caravan.app.Simulation;
 import com.caravan.data.RouteSpec;
 import com.caravan.data.WorldData;
 import com.caravan.trade.Receipt;
+import com.caravan.rumor.Rumor;
 import com.caravan.trade.TradeRefused;
 import com.caravan.travel.Departure;
 import com.caravan.travel.Journey;
@@ -32,6 +34,7 @@ import java.util.Map;
  */
 public final class TradeConsole {
 
+    private final Simulation sim;
     private final World world;
     private final WorldData data;
     private final Company company;
@@ -39,14 +42,20 @@ public final class TradeConsole {
     private final SimReport report;
     private final PrintStream out;
 
-    public TradeConsole(World world, WorldData data, PrintStream out) {
-        this.world = world;
-        this.data = data;
+    /**
+     * 살아 있는 세계에 상단 하나를 들인다.
+     *
+     * <p>{@link Simulation} 을 받는 것이 중요하다 — {@code World} 만 들고 있으면
+     * NPC 도 사건도 돌지 않는 죽은 시장에서 혼자 사고팔게 된다.
+     */
+    public TradeConsole(Simulation sim, PrintStream out) {
+        this.sim = sim;
+        this.world = sim.world();
+        this.data = sim.data();
         this.names = new Names(data);
         this.report = new SimReport(out);
         this.out = out;
-        this.company = new Company(world, data, "내 상단",
-                data.cities().get(0).id());
+        this.company = sim.newCompany("내 상단", data.cities().get(0).id());
     }
 
     public void run() {
@@ -90,9 +99,12 @@ public final class TradeConsole {
                 case "팔기", "sell" -> trade(token, false);
                 case "견적", "quote" -> quote(token);
                 case "길", "routes" -> routes();
+                case "소문", "rumors" -> showRumors();
+                case "주점", "tavern" -> tavern();
+                case "정보상", "informant" -> informant();
                 case "출발", "이동", "go" -> depart(token);
                 case "대기", "wait" -> waitHours(token);
-                case "세계", "world" -> report.snapshot(world);
+                case "세계", "world" -> { report.snapshot(world); events(); }
                 case "끝", "quit", "exit" -> { return false; }
                 default -> out.println("  모르는 말이다: " + token[0] + "   ('도움' 참조)");
             }
@@ -112,6 +124,9 @@ public final class TradeConsole {
               사기 밀 60        산다        팔기 밀 60      판다
               견적 밀 60        사면 얼마인지만 본다 (아무것도 안 바뀐다)
               길                여기서 갈 수 있는 길들
+              소문              지금 들고 있는 소문
+              주점              한 잔 사며 듣는다 (방문당 한 번, 공짜, 믿을 게 못 된다)
+              정보상            돈을 주고 앞일을 산다
               출발 카르덴        떠난다. 길이 여럿이면 노선 이름을 준다
               출발 늑대고개      노선을 직접 고른다
               대기 3            세계 시간 3시간을 흘린다
@@ -209,6 +224,43 @@ public final class TradeConsole {
         report.receiptBody(company.here(), company.quoteSell(goodsId, qty), "    ");
     }
 
+    private void events() {
+        if (!sim.activeEvents().isEmpty()) {
+            out.println();
+            out.println("  진행 중인 사건");
+            sim.activeEvents().forEach(e ->
+                    out.printf("    %s — %s   (%s)%n", e.spec().name(), e.headline(), e.period()));
+        }
+    }
+
+    private void showRumors() {
+        List<Rumor> rumors = company.rumors();
+        out.println();
+        if (rumors.isEmpty()) {
+            out.println("  들은 말이 없다.");
+            return;
+        }
+        out.printf("  들은 말 (%d)%n", rumors.size());
+        for (Rumor r : rumors) {
+            out.printf("    %s%n", r.display(world.tick()));
+        }
+        out.println("    — 참인지 거짓인지는 아무도 말해주지 않는다. 출처를 보고 스스로 판단한다.");
+    }
+
+    private void tavern() {
+        Rumor r = company.listenAtTavern();
+        out.println();
+        out.printf("  한 잔 샀다 — %s%n", r.display(world.tick()));
+    }
+
+    private void informant() {
+        double before = company.trader().gold();
+        Rumor r = company.buyFromInformant();
+        out.println();
+        out.printf("  %s G 를 냈다 — %s%n",
+                Text.money(before - company.trader().gold()), r.display(world.tick()));
+    }
+
     private void routes() {
         City city = company.here();
         if (city == null) {
@@ -245,12 +297,15 @@ public final class TradeConsole {
         String destination = wasTravelling
                 ? world.city(company.journey().toId()).name() : null;
 
-        world.advanceTo(world.tick() + Math.round(hours * 60 / WorldClock.MINUTES_PER_TICK));
+        sim.advanceTo(world.tick() + Math.round(hours * 60 / WorldClock.MINUTES_PER_TICK));
         out.printf("%n  세계 시간 %.0f시간이 흘렀다 → %s%n", hours, WorldClock.format(world.tick()));
 
         if (wasTravelling && !company.isTravelling()) {
             out.printf("  ★ %s 에 도착했다. 아무것도 팔지 않았다 — 파는 시점은 직접 고른다.%n",
                     destination);
+            for (Rumor r : company.takeFreshRumors()) {
+                out.printf("    들었다 — %s%n", r.display(world.tick()));
+            }
             report.city(company.here());
         } else if (company.isTravelling()) {
             Journey j = company.journey();

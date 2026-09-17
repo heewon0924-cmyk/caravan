@@ -16,6 +16,7 @@ package com.caravan.data;
  * @param npcCaravanCapacity   NPC 짐수레 용량. 플레이어보다 작다
  * @param npcStartingGold      NPC 한 명의 밑천
  * @param npcTemperaments      NPC 성격별 설정. count 합계가 인원이다
+ * @param informantFee         정보상에게 한 번 묻는 값
  * @param eventsPerDay         세계 하루당 평균 이벤트 발생 수
  * @param maxConcurrentEvents  동시에 진행될 수 있는 이벤트 수
  */
@@ -32,6 +33,7 @@ public record WorldRules(double speed,
                          double npcCaravanCapacity,
                          double npcStartingGold,
                          java.util.List<TemperamentSpec> npcTemperaments,
+                         double informantFee,
                          double eventsPerDay,
                          int maxConcurrentEvents) {
 
