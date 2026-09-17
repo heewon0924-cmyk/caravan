@@ -1,6 +1,7 @@
 package com.caravan.cli;
 
 import com.caravan.data.GoodsSpec;
+import com.caravan.trade.Receipt;
 import com.caravan.world.City;
 import com.caravan.world.Market;
 import com.caravan.world.World;
@@ -74,6 +75,36 @@ public final class SimReport {
             sb.append("  굶음(미충족 ").append(Text.number(m.unmetDemand())).append(")");
         }
         return sb.toString();
+    }
+
+    /**
+     * 거래 한 건의 내역. 2단계의 합격 기준이 "시세가 밀리는 게 보인다" 라서
+     * 거래 전후 시세를 반드시 같이 찍는다.
+     */
+    public void receipt(City city, Receipt r) {
+        out.println();
+        out.printf("  %s 에서 %s %s개 %s%n",
+                city.name(), city.market(r.goodsId()).goods().name(),
+                Text.number(r.quantity()), r.buying() ? "매수" : "매도");
+        receiptBody(city, r, "    ");
+    }
+
+    public void receiptBody(City city, Receipt r, String indent) {
+        out.printf("%s시세      %s G  →  %s G   (%+.1f%%)%n",
+                indent, Text.money(r.priceBefore()), Text.money(r.priceAfter()),
+                r.priceMovedRatio() * 100);
+        out.printf("%s적분 금액  %s G%s%n",
+                indent, Text.money(r.gross()),
+                r.slippage() > 1
+                        ? String.format("   (시세대로면 %s G — %s %s G)",
+                        Text.money(r.atSpot()),
+                        r.buying() ? "더 냈다" : "덜 받았다",
+                        Text.money(r.slippage()))
+                        : "");
+        out.printf("%s거래세     %s G%n", indent, Text.money(r.tax()));
+        out.printf("%s%s     %s G   (개당 %s G)%n",
+                indent, r.buying() ? "총 지출" : "총 수입",
+                Text.money(r.net()), Text.money(r.averageUnitPrice()));
     }
 
     /** 사고팔 때 시세가 얼마나 밀리는지 보여준다. */

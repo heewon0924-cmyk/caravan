@@ -86,6 +86,29 @@ public final class Market {
         return StockLevel.많음;
     }
 
+    /**
+     * 거래로 재고가 빠진다. {@code Exchange} 만 부른다 — 직접 부르면 돈이 오가지 않은 채
+     * 재고만 사라진다.
+     */
+    public void takeStock(double quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("수량은 0보다 커야 한다: " + quantity);
+        }
+        if (quantity > stock + 1e-9) {
+            throw new IllegalArgumentException(
+                    "재고보다 많이 뺄 수 없다: 재고 " + stock + ", 요청 " + quantity);
+        }
+        stock = Math.max(0, stock - quantity);
+    }
+
+    /** 거래로 재고가 들어온다. {@code Exchange} 만 부른다. */
+    public void addStock(double quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("수량은 0보다 커야 한다: " + quantity);
+        }
+        stock += quantity;
+    }
+
     public GoodsSpec goods() { return goods; }
     public MarketSpec spec() { return spec; }
     public PriceCurve curve() { return curve; }

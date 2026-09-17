@@ -8,12 +8,16 @@ package com.caravan.data;
  * @param spoilRatePerTick     넘친 초과분이 매 틱 상하는 비율
  * @param priceFloorMultiple   시세 하한 (기준가의 배수)
  * @param priceCeilingMultiple 시세 상한 (기준가의 배수)
+ * @param tradeTaxRate         거래세. 사고팔 때 각각 물린다 (docs/02-교역과-가격.md 6장)
+ * @param startingGold         상단의 시작 자본
  */
 public record WorldRules(double speed,
                          double granaryCapMultiple,
                          double spoilRatePerTick,
                          double priceFloorMultiple,
-                         double priceCeilingMultiple) {
+                         double priceCeilingMultiple,
+                         double tradeTaxRate,
+                         double startingGold) {
 
     public WorldRules {
         if (speed <= 0) {
@@ -24,6 +28,12 @@ public record WorldRules(double speed,
         }
         if (spoilRatePerTick <= 0 || spoilRatePerTick > 1) {
             throw new IllegalArgumentException("상하는 비율은 0~1 이어야 한다: " + spoilRatePerTick);
+        }
+        if (tradeTaxRate < 0 || tradeTaxRate >= 1) {
+            throw new IllegalArgumentException("거래세는 0 이상 1 미만이어야 한다: " + tradeTaxRate);
+        }
+        if (startingGold < 0) {
+            throw new IllegalArgumentException("시작 자본은 음수일 수 없다: " + startingGold);
         }
     }
 }

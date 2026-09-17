@@ -97,6 +97,8 @@ class WorldDataTest {
         assertThat(data.rules().granaryCapMultiple()).isEqualTo(3.0);
         assertThat(data.rules().priceFloorMultiple()).isEqualTo(0.35);
         assertThat(data.rules().priceCeilingMultiple()).isEqualTo(3.0);
+        assertThat(data.rules().tradeTaxRate()).isEqualTo(0.03);
+        assertThat(data.rules().startingGold()).isEqualTo(10_000);
     }
 
     private double net(String cityId, String goodsId) {

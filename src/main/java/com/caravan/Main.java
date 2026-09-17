@@ -1,6 +1,9 @@
 package com.caravan;
 
+import com.caravan.cli.Names;
+import com.caravan.cli.RoundTrip;
 import com.caravan.cli.SimReport;
+import com.caravan.cli.TradeConsole;
 import com.caravan.data.WorldData;
 import com.caravan.world.City;
 import com.caravan.world.World;
@@ -10,10 +13,12 @@ import com.caravan.world.WorldClock;
  * 1단계 검증용 콘솔.
  *
  * <pre>
- *   caravan sim   [--days 7] [--every 1]   세계를 굴리고 하루마다 찍는다
- *   caravan quote 밀@하른 --qty 300 [--sell] 대량 거래가 시세를 얼마나 미는지 본다
- *   caravan curve 밀@하른                    재고에 따른 시세표
- *   caravan data                             읽어들인 밸런스 데이터를 확인한다
+ *   caravan trade                            대화형 — 직접 사고팔아 본다  (2단계)
+ *   caravan roundtrip 밀 하른 카르덴 --qty 300 --days 3   왕복 한 번의 손익
+ *   caravan sim   [--days 7] [--every 1]      세계를 굴리고 하루마다 찍는다
+ *   caravan quote 밀@하른 --qty 300 [--sell]   대량 거래가 시세를 얼마나 미는지 본다
+ *   caravan curve 밀@하른                     재고에 따른 시세표
+ *   caravan data                              읽어들인 밸런스 데이터를 확인한다
  * </pre>
  *
  * 도시와 품목은 id(harn, wheat)로도 이름(하른, 밀)으로도 쓸 수 있다.
@@ -26,16 +31,32 @@ public final class Main {
         String command = args.length == 0 ? "sim" : args[0];
 
         switch (command) {
+            case "trade", "거래" -> trade(data);
+            case "roundtrip", "왕복" -> roundtrip(data, args);
             case "sim" -> sim(data, report, args);
             case "quote" -> quote(data, report, args);
             case "curve" -> curve(data, report, args);
             case "data" -> data(data);
             default -> {
                 System.err.println("모르는 명령이다: " + command);
-                System.err.println("쓸 수 있는 것: sim, quote, curve, data");
+                System.err.println("쓸 수 있는 것: trade, roundtrip, sim, quote, curve, data");
                 System.exit(2);
             }
         }
+    }
+
+    private static void trade(WorldData data) {
+        new TradeConsole(new World(data), data, System.out).run();
+    }
+
+    private static void roundtrip(WorldData data, String[] args) {
+        Names names = new Names(data);
+        String goods = args.length > 1 ? names.goods(args[1]) : "wheat";
+        String from = args.length > 2 ? names.city(args[2]) : "harn";
+        String to = args.length > 3 ? names.city(args[3]) : "karden";
+
+        new RoundTrip(System.out).analyse(data, goods, from, to,
+                doubleArg(args, "--qty", 300), intArg(args, "--days", 0));
     }
 
     private static void sim(WorldData data, SimReport report, String[] args) {
