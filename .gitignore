@@ -1,0 +1,14 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 편집기
+.idea/
+.vscode/
+*.swp
+*~
+
+# 작업 중 메모 (저장소에 올리지 않는다)
+scratch/
+*.local.md
