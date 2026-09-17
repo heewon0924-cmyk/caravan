@@ -26,8 +26,8 @@ class MarketTickTest {
         double before = wheat.stock();
         world.advanceDays(1);
 
-        // 하른 밀: 생산 720 - 소비 240 = 하루 +480
-        assertThat(wheat.stock()).isCloseTo(before + 480, within(0.5));
+        // 하른 밀: 생산 900 - 소비 240 = 하루 +660
+        assertThat(wheat.stock()).isCloseTo(before + 660, within(0.5));
     }
 
     @Test
@@ -67,7 +67,7 @@ class MarketTickTest {
         world.advanceDays(60);
 
         // 매 틱 들어오는 순증분과 상해서 나가는 분량이 맞물리는 지점에서 멈춘다
-        double netPerTick = 480.0 / WorldClock.TICKS_PER_DAY;
+        double netPerTick = 660.0 / WorldClock.TICKS_PER_DAY;
         double equilibrium = wheat.granaryCap() + netPerTick / world.rules().spoilRatePerTick();
 
         assertThat(wheat.stock()).isLessThanOrEqualTo(equilibrium + 1);

@@ -60,12 +60,10 @@ class EconomyStabilityTest {
         Market harnWheat = world.city("harn").market("wheat");
         Market kardenWheat = world.city("karden").market("wheat");
 
-        // 하른은 밀이 남아돈다 → 재고가 불어나 시세가 기준가 아래로 내려간다.
-        // 7일차 재고는 2000 + 7×480 = 5360 으로 아직 곳간 상한(6000)에 닿지 않는다 —
-        // 넘치기 시작하는 건 8일차 언저리다. 넘친 뒤의 거동은 MarketTickTest 가 본다.
-        assertThat(harnWheat.stock()).isGreaterThan(harnWheat.refStock() * 2.5);
-        assertThat(harnWheat.stock()).isLessThan(harnWheat.granaryCap());
-        assertThat(harnWheat.spotPrice()).isLessThan(harnWheat.goods().basePrice() * 0.7);
+        // 하른은 밀이 남아돈다 → 하루 +660 씩 불어나 6일차에 곳간 상한(6000)을 넘고,
+        // 그 뒤로는 넘친 만큼 상해서 상한 언저리에 멈춘다.
+        assertThat(harnWheat.stock()).isGreaterThan(harnWheat.granaryCap());
+        assertThat(harnWheat.spotPrice()).isLessThan(harnWheat.goods().basePrice() * 0.6);
 
         // 카르덴은 밀이 없다 → 재고 0, 시세 상한
         assertThat(kardenWheat.stock()).isZero();

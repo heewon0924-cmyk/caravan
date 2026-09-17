@@ -1,5 +1,6 @@
 package com.caravan;
 
+import com.caravan.cli.LiveReport;
 import com.caravan.cli.Names;
 import com.caravan.cli.RoundTrip;
 import com.caravan.cli.SimReport;
@@ -33,13 +34,14 @@ public final class Main {
         switch (command) {
             case "trade", "거래" -> trade(data);
             case "roundtrip", "왕복" -> roundtrip(data, args);
+            case "live", "세계" -> live(data, args);
             case "sim" -> sim(data, report, args);
             case "quote" -> quote(data, report, args);
             case "curve" -> curve(data, report, args);
             case "data" -> data(data);
             default -> {
                 System.err.println("모르는 명령이다: " + command);
-                System.err.println("쓸 수 있는 것: trade, roundtrip, sim, quote, curve, data");
+                System.err.println("쓸 수 있는 것: live, trade, roundtrip, sim, quote, curve, data");
                 System.exit(2);
             }
         }
@@ -57,6 +59,13 @@ public final class Main {
 
         new RoundTrip(System.out).analyse(data, goods, from, to,
                 doubleArg(args, "--qty", 300), intArg(args, "--days", 0));
+    }
+
+    private static void live(WorldData data, String[] args) {
+        new LiveReport(System.out).run(data,
+                (long) doubleArg(args, "--seed", 42),
+                intArg(args, "--days", 7),
+                intArg(args, "--every", 7));
     }
 
     private static void sim(WorldData data, SimReport report, String[] args) {

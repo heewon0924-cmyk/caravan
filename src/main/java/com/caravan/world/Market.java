@@ -26,6 +26,10 @@ public final class Market {
      */
     private double unmetDemand;
 
+    /** 이벤트가 걸어놓은 생산·소비 보정. 사건이 없으면 1.0 이다. */
+    private double productionModifier = 1.0;
+    private double consumptionModifier = 1.0;
+
     Market(GoodsSpec goods, MarketSpec spec, WorldRules rules) {
         this.goods = goods;
         this.spec = spec;
@@ -47,9 +51,9 @@ public final class Market {
      * 에 쌓는다.
      */
     void tick() {
-        stock += spec.productionPerDay() / WorldClock.TICKS_PER_DAY;
+        stock += spec.productionPerDay() * productionModifier / WorldClock.TICKS_PER_DAY;
 
-        double want = spec.consumptionPerDay() / WorldClock.TICKS_PER_DAY;
+        double want = spec.consumptionPerDay() * consumptionModifier / WorldClock.TICKS_PER_DAY;
         double taken = Math.min(want, stock);
         stock -= taken;
         unmetDemand += want - taken;
@@ -107,6 +111,24 @@ public final class Market {
             throw new IllegalArgumentException("수량은 0보다 커야 한다: " + quantity);
         }
         stock += quantity;
+    }
+
+    /**
+     * 이벤트 효과를 건다. {@code EventEngine} 만 부른다 — 매 틱 전부 다시 계산하므로
+     * 사건이 끝나면 저절로 1.0 으로 돌아온다.
+     */
+    public void setModifiers(double production, double consumption) {
+        this.productionModifier = production;
+        this.consumptionModifier = consumption;
+    }
+
+    public double productionModifier() { return productionModifier; }
+    public double consumptionModifier() { return consumptionModifier; }
+
+    /** 이벤트가 걸려 있는가. 화면에 표시할 때 쓴다. */
+    public boolean isAffectedByEvent() {
+        return Math.abs(productionModifier - 1.0) > 1e-9
+                || Math.abs(consumptionModifier - 1.0) > 1e-9;
     }
 
     public GoodsSpec goods() { return goods; }

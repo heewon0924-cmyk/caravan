@@ -26,7 +26,7 @@ class ArchitectureTest {
     private static final Path SOURCE = Path.of("src/main/java/com/caravan");
 
     /** 규칙이 사는 곳. 여기가 오염되면 클라이언트를 갈아끼울 수 없게 된다. */
-    private static final List<String> DOMAIN = List.of("world", "economy", "trade", "travel");
+    private static final List<String> DOMAIN = List.of("world", "economy", "trade", "travel", "npc", "event");
 
     @Test
     @DisplayName("도메인은 프레임워크를 모른다 — Jackson도 Spring도 안 들어온다")

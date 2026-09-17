@@ -85,7 +85,7 @@ class WorldDataTest {
     @Test
     @DisplayName("데이터가 어긋나면 읽는 시점에 터진다")
     void 잘못된_데이터는_바로_터진다() {
-        assertThatThrownBy(() -> WorldData.load("data/goods.yml", "data/nope.yml", "data/routes.yml", "data/world.yml"))
+        assertThatThrownBy(() -> WorldData.load("data/goods.yml", "data/nope.yml", "data/routes.yml", "data/events.yml", "data/world.yml"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("못 찾았다");
     }

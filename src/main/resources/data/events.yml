@@ -1,0 +1,110 @@
+# 세계 이벤트 — docs/09-이벤트와-NPC.md 3장
+#
+# 이벤트가 지켜야 할 규칙:
+#   1. 가격을 직접 바꾸지 않는다. 생산·소비·재고를 바꾸고 가격은 따라온다
+#   2. 예고가 있다. 예고 없는 이벤트는 정보를 무의미하게 만든다
+#   3. 끝이 있다. 플레이어가 "언제까지 오를까" 를 계산할 수 있어야 한다
+#
+# weight            : 뽑힐 상대적 무게
+# forecastHours     : 시작 몇 시간 전부터 예고가 도는가. 0 이면 예고 없음
+# productionMultiple: 대상 품목의 생산량 배수
+# consumptionMultiple: 대상 품목의 소비량 배수
+# stockBonusRatio   : 시작할 때 기준재고의 이 비율만큼 재고를 한 번 넣는다
+# dangerMultiple    : 대상 노선의 위험도 배수
+# jobFamilyBonus    : 전직 계열 보너스. 7단계에서 쓴다 — 지금은 기록만 한다
+# goods 를 비우면 그 도시의 모든 품목, city 를 비우면 임의의 도시
+
+events:
+  - id: bad-harvest
+    name: 흉년
+    weight: 10
+    city: harn
+    goods: [wheat]
+    productionMultiple: 0.4
+    durationHours: 72
+    forecastHours: 48
+    text: 하른의 밀 농사가 크게 망했다
+
+  - id: good-harvest
+    name: 풍년
+    weight: 10
+    city: harn
+    goods: [wheat]
+    productionMultiple: 1.8
+    durationHours: 72
+    forecastHours: 48
+    text: 하른에 밀이 넘치게 났다
+
+  # 아홉 중 하나만 예고가 없다. 하나쯤은 아무도 못 맞히는 사고가 있어야
+  # "모든 걸 알 수 있다" 는 감각이 안 생긴다. 다만 하나뿐이다.
+  - id: mine-collapse
+    name: 갱도 붕괴
+    weight: 8
+    city: karden
+    goods: [iron]
+    productionMultiple: 0.3
+    durationHours: 48
+    forecastHours: 0
+    text: 카르덴의 갱도가 무너졌다
+
+  - id: new-vein
+    name: 새 광맥
+    weight: 8
+    city: karden
+    goods: [iron]
+    productionMultiple: 2.0
+    durationHours: 96
+    forecastHours: 24
+    text: 카르덴에서 새 광맥이 나왔다
+
+  - id: merchant-fleet
+    name: 상선 입항
+    weight: 12
+    city: selia
+    goods: [spice, cloth]
+    stockBonusRatio: 0.8
+    durationHours: 1
+    forecastHours: 24
+    text: 셀리아에 대규모 상선이 들어온다
+
+  - id: port-blockade
+    name: 항구 봉쇄
+    weight: 8
+    city: selia
+    goods: [spice, cloth]
+    productionMultiple: 0.0
+    durationHours: 72
+    forecastHours: 24
+    text: 셀리아 항구가 막혔다
+
+  - id: bandits
+    name: 도적 창궐
+    weight: 10
+    routes: [wolf-pass, mountain-path]
+    dangerMultiple: 2.0
+    durationHours: 48
+    forecastHours: 24
+    text: 산길에 도적이 들끓는다
+
+  - id: festival
+    name: 축제
+    weight: 10
+    consumptionMultiple: 1.5
+    durationHours: 24
+    forecastHours: 48
+    text: 축제가 열린다
+
+  # 위험과 기회가 같은 사건에서 나온다 — 늑대고개가 위험해지는 동시에
+  # 셀리아에서 해적왕이 되기 쉬워진다. 이런 이벤트를 늘려야 한다.
+  - id: pirates
+    name: 해적 창궐
+    weight: 8
+    city: selia
+    goods: [spice]
+    productionMultiple: 0.5
+    routes: [coast-road, wolf-pass]
+    dangerMultiple: 1.8
+    jobFamilyBonus: 해양
+    durationHours: 72
+    forecastHours: 24
+    text: 앞바다에 해적이 나타났다

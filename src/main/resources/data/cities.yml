@@ -7,6 +7,11 @@
 #
 # 세 도시 모두 혼자서는 굶는다. 하른은 밀만 남고 철이 없고, 카르덴은 철만 남고
 # 밀이 없다. 누군가 실어 나르지 않으면 셋 다 망한다 — 그게 플레이어가 있어야 할 이유다.
+#
+# 다만 **세계 전체로는 모든 품목이 남아야 한다.** 세계 생산이 세계 소비보다 적으면
+# 누가 아무리 잘 날라도 어느 도시는 반드시 굶는다. 그건 교역으로 풀 수 있는 문제가
+# 아니라 데이터가 틀린 것이다 — WorldBalanceTest 가 매 빌드마다 검사한다.
+# (4단계에서 밀 -80/일, 소금 -50/일 로 깨져 있는 걸 발견해서 고쳤다. docs/24 2장)
 
 cities:
   - id: harn
@@ -15,7 +20,7 @@ cities:
     market:
       - goods: wheat
         refStock: 2000
-        productionPerDay: 720
+        productionPerDay: 900
         consumptionPerDay: 240
       - goods: iron
         refStock: 200
@@ -44,7 +49,7 @@ cities:
         consumptionPerDay: 300
       - goods: iron
         refStock: 900
-        productionPerDay: 260
+        productionPerDay: 190
         consumptionPerDay: 40
       - goods: salt
         refStock: 200
@@ -73,13 +78,13 @@ cities:
         consumptionPerDay: 70
       - goods: salt
         refStock: 600
-        productionPerDay: 180
+        productionPerDay: 258
         consumptionPerDay: 60
       - goods: cloth
         refStock: 500
-        productionPerDay: 150
+        productionPerDay: 134
         consumptionPerDay: 50
       - goods: spice
         refStock: 300
-        productionPerDay: 90
+        productionPerDay: 30
         consumptionPerDay: 10

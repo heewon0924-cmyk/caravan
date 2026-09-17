@@ -28,26 +28,30 @@ public final class WorldData {
     private final Map<String, GoodsSpec> goods;
     private final List<CitySpec> cities;
     private final List<RouteSpec> routes;
+    private final List<EventSpec> events;
     private final WorldRules rules;
 
     private WorldData(Map<String, GoodsSpec> goods, List<CitySpec> cities,
-                      List<RouteSpec> routes, WorldRules rules) {
+                      List<RouteSpec> routes, List<EventSpec> events, WorldRules rules) {
         this.goods = goods;
         this.cities = cities;
         this.routes = routes;
+        this.events = events;
         this.rules = rules;
     }
 
     /** 클래스패스의 {@code data/} 에서 읽는다. */
     public static WorldData load() {
-        return load("data/goods.yml", "data/cities.yml", "data/routes.yml", "data/world.yml");
+        return load("data/goods.yml", "data/cities.yml", "data/routes.yml",
+                "data/events.yml", "data/world.yml");
     }
 
-    public static WorldData load(String goodsPath, String citiesPath,
-                                 String routesPath, String worldPath) {
+    public static WorldData load(String goodsPath, String citiesPath, String routesPath,
+                                 String eventsPath, String worldPath) {
         List<GoodsSpec> goodsList = read(goodsPath, GoodsFile.class).goods();
         List<CitySpec> cityList = read(citiesPath, CityFile.class).cities();
         List<RouteSpec> routeList = read(routesPath, RouteFile.class).routes();
+        List<EventSpec> eventList = read(eventsPath, EventFile.class).events();
         WorldRules rules = read(worldPath, WorldFile.class).world();
 
         Map<String, GoodsSpec> byId = new LinkedHashMap<>();
@@ -59,7 +63,51 @@ public final class WorldData {
 
         validate(byId, cityList);
         validateRoutes(routeList, cityList);
-        return new WorldData(byId, cityList, routeList, rules);
+        validateEvents(eventList, byId, cityList, routeList);
+        return new WorldData(byId, cityList, routeList, eventList, rules);
+    }
+
+    private static void validateEvents(List<EventSpec> events, Map<String, GoodsSpec> goods,
+                                       List<CitySpec> cities, List<RouteSpec> routes) {
+        java.util.Set<String> cityIds = new java.util.LinkedHashSet<>();
+        cities.forEach(c -> cityIds.add(c.id()));
+        java.util.Set<String> routeIds = new java.util.LinkedHashSet<>();
+        routes.forEach(r -> routeIds.add(r.id()));
+
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        for (EventSpec e : events) {
+            if (!seen.add(e.id())) {
+                throw new IllegalStateException("이벤트 id 가 중복된다: " + e.id());
+            }
+            if (e.city() != null && !cityIds.contains(e.city())) {
+                throw new IllegalStateException(e.name() + " 이 모르는 도시를 가리킨다: " + e.city());
+            }
+            if (e.goods() != null) {
+                for (String g : e.goods()) {
+                    if (!goods.containsKey(g)) {
+                        throw new IllegalStateException(e.name() + " 이 모르는 품목을 가리킨다: " + g);
+                    }
+                }
+            }
+            if (e.routes() != null) {
+                for (String r : e.routes()) {
+                    if (!routeIds.contains(r)) {
+                        throw new IllegalStateException(e.name() + " 이 모르는 노선을 가리킨다: " + r);
+                    }
+                }
+            }
+            if (e.durationHours() <= 0) {
+                throw new IllegalStateException(e.name() + " 의 지속 시간이 0 이하다");
+            }
+            if (e.weight() <= 0) {
+                throw new IllegalStateException(e.name() + " 의 무게가 0 이하다");
+            }
+            // 품목을 지정했는데 도시를 안 정하면 어느 도시의 그 품목인지 알 수 없다
+            if (e.goods() != null && !e.goods().isEmpty() && e.city() == null) {
+                throw new IllegalStateException(
+                        e.name() + " 은 품목을 지정했으니 도시도 지정해야 한다");
+            }
+        }
     }
 
     private static void validateRoutes(List<RouteSpec> routes, List<CitySpec> cities) {
@@ -179,6 +227,7 @@ public final class WorldData {
     public List<GoodsSpec> goodsInOrder() { return List.copyOf(goods.values()); }
     public List<CitySpec> cities() { return List.copyOf(cities); }
     public List<RouteSpec> routes() { return List.copyOf(routes); }
+    public List<EventSpec> events() { return List.copyOf(events); }
 
     /** {@code cityId} 에서 떠날 수 있는 노선들. */
     public List<RouteSpec> routesFrom(String cityId) {
@@ -202,5 +251,6 @@ public final class WorldData {
     record GoodsFile(List<GoodsSpec> goods) { }
     record CityFile(List<CitySpec> cities) { }
     record RouteFile(List<RouteSpec> routes) { }
+    record EventFile(List<EventSpec> events) { }
     record WorldFile(WorldRules world) { }
 }
