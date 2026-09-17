@@ -27,22 +27,27 @@ public final class WorldData {
 
     private final Map<String, GoodsSpec> goods;
     private final List<CitySpec> cities;
+    private final List<RouteSpec> routes;
     private final WorldRules rules;
 
-    private WorldData(Map<String, GoodsSpec> goods, List<CitySpec> cities, WorldRules rules) {
+    private WorldData(Map<String, GoodsSpec> goods, List<CitySpec> cities,
+                      List<RouteSpec> routes, WorldRules rules) {
         this.goods = goods;
         this.cities = cities;
+        this.routes = routes;
         this.rules = rules;
     }
 
     /** 클래스패스의 {@code data/} 에서 읽는다. */
     public static WorldData load() {
-        return load("data/goods.yml", "data/cities.yml", "data/world.yml");
+        return load("data/goods.yml", "data/cities.yml", "data/routes.yml", "data/world.yml");
     }
 
-    public static WorldData load(String goodsPath, String citiesPath, String worldPath) {
+    public static WorldData load(String goodsPath, String citiesPath,
+                                 String routesPath, String worldPath) {
         List<GoodsSpec> goodsList = read(goodsPath, GoodsFile.class).goods();
         List<CitySpec> cityList = read(citiesPath, CityFile.class).cities();
+        List<RouteSpec> routeList = read(routesPath, RouteFile.class).routes();
         WorldRules rules = read(worldPath, WorldFile.class).world();
 
         Map<String, GoodsSpec> byId = new LinkedHashMap<>();
@@ -53,7 +58,64 @@ public final class WorldData {
         }
 
         validate(byId, cityList);
-        return new WorldData(byId, cityList, rules);
+        validateRoutes(routeList, cityList);
+        return new WorldData(byId, cityList, routeList, rules);
+    }
+
+    private static void validateRoutes(List<RouteSpec> routes, List<CitySpec> cities) {
+        java.util.Set<String> cityIds = new java.util.LinkedHashSet<>();
+        cities.forEach(c -> cityIds.add(c.id()));
+
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        for (RouteSpec r : routes) {
+            if (!seen.add(r.id())) {
+                throw new IllegalStateException("노선 id 가 중복된다: " + r.id());
+            }
+            if (!cityIds.contains(r.from()) || !cityIds.contains(r.to())) {
+                throw new IllegalStateException(
+                        r.name() + " 이 모르는 도시를 잇는다: " + r.from() + " ↔ " + r.to());
+            }
+            if (r.from().equals(r.to())) {
+                throw new IllegalStateException(r.name() + " 의 양 끝이 같은 도시다");
+            }
+            if (r.hours() <= 0) {
+                throw new IllegalStateException(r.name() + " 의 소요 시간이 0 이하다");
+            }
+            if (r.danger() < 0 || r.danger() > 1) {
+                throw new IllegalStateException(r.name() + " 의 위험도가 0~1 이 아니다");
+            }
+            if (r.toll() < 0) {
+                throw new IllegalStateException(r.name() + " 의 통행료가 음수다");
+            }
+        }
+
+        // 어느 도시에서도 다른 모든 도시로 갈 수 있어야 한다.
+        // 못 가는 도시가 생기면 그 도시는 세계에서 떨어져 나간 것인데,
+        // 데이터 오타로 이렇게 되면 한참 뒤에 "왜 저기를 아무도 안 가지" 로 나타난다.
+        for (String city : cityIds) {
+            java.util.Set<String> reachable = reachableFrom(city, routes);
+            if (!reachable.containsAll(cityIds)) {
+                java.util.Set<String> missing = new java.util.LinkedHashSet<>(cityIds);
+                missing.removeAll(reachable);
+                throw new IllegalStateException(city + " 에서 갈 수 없는 도시가 있다: " + missing);
+            }
+        }
+    }
+
+    private static java.util.Set<String> reachableFrom(String start, List<RouteSpec> routes) {
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        java.util.Deque<String> queue = new java.util.ArrayDeque<>();
+        queue.add(start);
+        seen.add(start);
+        while (!queue.isEmpty()) {
+            String here = queue.poll();
+            for (RouteSpec r : routes) {
+                if (r.connects(here) && seen.add(r.otherEnd(here))) {
+                    queue.add(r.otherEnd(here));
+                }
+            }
+        }
+        return seen;
     }
 
     private static void validate(Map<String, GoodsSpec> goods, List<CitySpec> cities) {
@@ -116,6 +178,17 @@ public final class WorldData {
     public Map<String, GoodsSpec> goods() { return Map.copyOf(goods); }
     public List<GoodsSpec> goodsInOrder() { return List.copyOf(goods.values()); }
     public List<CitySpec> cities() { return List.copyOf(cities); }
+    public List<RouteSpec> routes() { return List.copyOf(routes); }
+
+    /** {@code cityId} 에서 떠날 수 있는 노선들. */
+    public List<RouteSpec> routesFrom(String cityId) {
+        return routes.stream().filter(r -> r.connects(cityId)).toList();
+    }
+
+    /** 두 도시를 잇는 노선들. 여럿일 수 있다 — 그게 "이동이 곧 의사결정" 의 뼈대다. */
+    public List<RouteSpec> routesBetween(String a, String b) {
+        return routes.stream().filter(r -> r.links(a, b)).toList();
+    }
     public WorldRules rules() { return rules; }
 
     public GoodsSpec goods(String id) {
@@ -128,5 +201,6 @@ public final class WorldData {
 
     record GoodsFile(List<GoodsSpec> goods) { }
     record CityFile(List<CitySpec> cities) { }
+    record RouteFile(List<RouteSpec> routes) { }
     record WorldFile(WorldRules world) { }
 }

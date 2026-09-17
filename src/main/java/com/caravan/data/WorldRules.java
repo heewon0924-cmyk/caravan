@@ -10,6 +10,9 @@ package com.caravan.data;
  * @param priceCeilingMultiple 시세 상한 (기준가의 배수)
  * @param tradeTaxRate         거래세. 사고팔 때 각각 물린다 (docs/02-교역과-가격.md 6장)
  * @param startingGold         상단의 시작 자본
+ * @param caravanCapacity      캐러밴이 실을 수 있는 총 부피
+ * @param loadSlowdown         가득 실었을 때 느려지는 비율
+ * @param travelCostPerHour    노선 기본 소요시간 1시간당 출발비
  */
 public record WorldRules(double speed,
                          double granaryCapMultiple,
@@ -17,7 +20,10 @@ public record WorldRules(double speed,
                          double priceFloorMultiple,
                          double priceCeilingMultiple,
                          double tradeTaxRate,
-                         double startingGold) {
+                         double startingGold,
+                         double caravanCapacity,
+                         double loadSlowdown,
+                         double travelCostPerHour) {
 
     public WorldRules {
         if (speed <= 0) {
@@ -34,6 +40,15 @@ public record WorldRules(double speed,
         }
         if (startingGold < 0) {
             throw new IllegalArgumentException("시작 자본은 음수일 수 없다: " + startingGold);
+        }
+        if (caravanCapacity <= 0) {
+            throw new IllegalArgumentException("캐러밴 용량은 0보다 커야 한다: " + caravanCapacity);
+        }
+        if (loadSlowdown < 0) {
+            throw new IllegalArgumentException("적재 감속은 음수일 수 없다: " + loadSlowdown);
+        }
+        if (travelCostPerHour < 0) {
+            throw new IllegalArgumentException("이동 비용은 음수일 수 없다: " + travelCostPerHour);
         }
     }
 }

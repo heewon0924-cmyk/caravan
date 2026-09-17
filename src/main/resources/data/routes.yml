@@ -1,0 +1,48 @@
+# 노선 — docs/03-이동과-시간.md 4장
+#
+# 같은 두 도시 사이에 여러 노선이 있을 수 있다. 이게 "이동이 곧 의사결정" 의 뼈대다.
+#
+# hours  : 빈 캐러밴 기준 소요 시간(세계 시간). 실제로는 적재율만큼 느려진다
+# danger : 습격 확률의 기본값. 7단계에서 실제로 굴린다 — 3단계에서는 표시만 한다
+# toll   : 통행료
+#
+# 노선은 양방향이다. from/to 는 적는 순서일 뿐 방향을 뜻하지 않는다.
+
+routes:
+  - id: mountain-path
+    name: 산기슭길
+    from: harn
+    to: karden
+    hours: 2.0
+    danger: 0.12
+    toll: 0
+    note: 기본 왕복. 밀 싣고 가서 철 싣고 온다
+
+  - id: mine-road
+    name: 광산가도
+    from: karden
+    to: selia
+    hours: 3.0
+    danger: 0.05
+    toll: 40
+    note: 잘 닦인 길
+
+  - id: coast-road
+    name: 해안가도
+    from: harn
+    to: selia
+    hours: 4.0
+    danger: 0.02
+    toll: 60
+    note: 멀지만 안전하다
+
+  # 이 한 쌍이 이 게임의 핵심 결정을 통째로 담고 있다.
+  # 1시간 30분과 통행료 60G 를 아끼는 대신 위험을 산다.
+  - id: wolf-pass
+    name: 늑대고개
+    from: harn
+    to: selia
+    hours: 2.5
+    danger: 0.30
+    toll: 0
+    note: 1시간 30분을 위험과 바꾼다

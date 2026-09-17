@@ -26,7 +26,7 @@ class ArchitectureTest {
     private static final Path SOURCE = Path.of("src/main/java/com/caravan");
 
     /** 규칙이 사는 곳. 여기가 오염되면 클라이언트를 갈아끼울 수 없게 된다. */
-    private static final List<String> DOMAIN = List.of("world", "economy", "trade");
+    private static final List<String> DOMAIN = List.of("world", "economy", "trade", "travel");
 
     @Test
     @DisplayName("도메인은 프레임워크를 모른다 — Jackson도 Spring도 안 들어온다")
@@ -72,6 +72,17 @@ class ArchitectureTest {
                 .noneMatch(i -> i.startsWith("com.caravan.economy"))
                 .noneMatch(i -> i.startsWith("com.caravan.trade"))
                 .noneMatch(i -> i.startsWith("com.caravan.cli"));
+    }
+
+    @Test
+    @DisplayName("유스케이스 계층은 화면을 모른다")
+    void app_이_화면을_모른다() {
+        // app 은 도메인을 조립하는 곳이지 화면을 아는 곳이 아니다.
+        // 여기가 cli 를 import 하기 시작하면 콘솔 전용 코드가 서버에 눌러앉는다.
+        assertThat(importsIn(List.of("app")))
+                .noneMatch(i -> i.startsWith("com.caravan.cli"))
+                .noneMatch(i -> i.startsWith("com.fasterxml"))
+                .noneMatch(i -> i.startsWith("org.springframework"));
     }
 
     @Test

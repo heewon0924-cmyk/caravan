@@ -30,8 +30,11 @@ public final class Exchange {
      * 산다. 지불액은 적분 가격 + 거래세다.
      *
      * <p>돈이 모자라면 <b>재고를 건드리기 전에</b> 거절한다.
+     *
+     * <p>돈은 {@code trader} 에서 나가고 물건은 {@code cargo} 로 들어간다.
+     * 둘을 따로 받는 이유는 상단이 캐러밴을 여럿 굴릴 수 있기 때문이다.
      */
-    public Receipt buy(Trader trader, City city, String goodsId, double quantity) {
+    public Receipt buy(Trader trader, Cargo cargo, City city, String goodsId, double quantity) {
         Market market = city.market(goodsId);
         requirePositive(quantity);
 
@@ -48,7 +51,7 @@ public final class Exchange {
 
         trader.pay(total);
         market.takeStock(quantity);
-        trader.cargo().add(goodsId, quantity);
+        cargo.add(goodsId, quantity);
 
         return new Receipt(goodsId, quantity, gross, tax, total,
                 before, market.spotPrice(), true);
@@ -59,11 +62,11 @@ public final class Exchange {
      *
      * <p>가진 것보다 많이 팔려 하면 <b>재고를 건드리기 전에</b> 거절한다.
      */
-    public Receipt sell(Trader trader, City city, String goodsId, double quantity) {
+    public Receipt sell(Trader trader, Cargo cargo, City city, String goodsId, double quantity) {
         Market market = city.market(goodsId);
         requirePositive(quantity);
 
-        trader.cargo().remove(goodsId, quantity);
+        cargo.remove(goodsId, quantity);
 
         double before = market.spotPrice();
         double gross = market.revenueToSell(quantity);

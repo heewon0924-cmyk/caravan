@@ -40,6 +40,11 @@ public final class Names {
         return new String[]{ goods(parts[0]), city(parts[1]) };
     }
 
+    public String routeList() {
+        return String.join(", ", data.routes().stream()
+                .map(com.caravan.data.RouteSpec::name).toList());
+    }
+
     public String goodsList() {
         return String.join(", ", data.goodsInOrder().stream().map(GoodsSpec::name).toList());
     }

@@ -1,7 +1,9 @@
 package com.caravan.cli;
 
 import com.caravan.data.GoodsSpec;
+import com.caravan.data.RouteSpec;
 import com.caravan.trade.Receipt;
+import com.caravan.travel.Departure;
 import com.caravan.world.City;
 import com.caravan.world.Market;
 import com.caravan.world.World;
@@ -105,6 +107,43 @@ public final class SimReport {
         out.printf("%s%s     %s G   (개당 %s G)%n",
                 indent, r.buying() ? "총 지출" : "총 수입",
                 Text.money(r.net()), Text.money(r.averageUnitPrice()));
+    }
+
+    /** 여기서 갈 수 있는 길들. 어느 길로 갈지가 이 게임의 핵심 결정이다. */
+    public void routes(World world, City from, java.util.List<RouteSpec> routes,
+                       java.util.function.Function<RouteSpec, Departure> quote) {
+        out.println();
+        out.printf("  %s 에서 갈 수 있는 길%n", from.name());
+        out.printf("    %s %s %s %s %s %s%n",
+                Text.padRight("노선", 12), Text.padRight("→", 10),
+                Text.padLeft("소요", 10), Text.padLeft("비용", 9),
+                Text.padLeft("위험", 7), "  비고");
+
+        for (RouteSpec r : routes) {
+            Departure d = quote.apply(r);
+            out.printf("    %s %s %s %s %s   %s%n",
+                    Text.padRight(r.name(), 12),
+                    Text.padRight(world.city(r.otherEnd(from.id())).name(), 10),
+                    Text.padLeft(d.durationText(), 10),
+                    Text.padLeft(Text.money(d.totalCost()) + "G", 9),
+                    Text.padLeft(String.format("%.0f%%", d.danger() * 100), 7),
+                    r.note() == null ? "" : r.note());
+        }
+        out.println("    (위험은 7단계에서 실제로 굴린다 — 지금은 표시만 한다)");
+    }
+
+    /** 출발 내역. "지금 출발하면 언제 도착하는가" 가 중요한 판단이라 도착 시각을 크게 찍는다. */
+    public void departure(Departure d, String toName) {
+        out.println();
+        out.printf("  %s 로 떠났다 — %s%n", toName, d.route().name());
+        out.printf("    소요      %s  (빈 캐러밴이면 %.1f시간, 적재로 %+.0f분)%n",
+                d.durationText(), d.baseHours(), d.slowdownHours() * 60);
+        out.printf("    적재율    %.0f%%%n", d.loadRatio() * 100);
+        out.printf("    비용      %s G  (출발비 %s + 통행료 %s)%n",
+                Text.money(d.totalCost()), Text.money(d.travelCost()), Text.money(d.toll()));
+        out.printf("    위험      %.0f%%   (7단계에서 굴린다)%n", d.danger() * 100);
+        out.printf("    도착 예정  세계 %s%n", d.arrivesAtText());
+        out.println("    되돌릴 수 없다.");
     }
 
     /** 사고팔 때 시세가 얼마나 밀리는지 보여준다. */

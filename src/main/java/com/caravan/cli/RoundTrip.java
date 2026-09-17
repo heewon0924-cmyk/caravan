@@ -1,6 +1,7 @@
 package com.caravan.cli;
 
 import com.caravan.data.WorldData;
+import com.caravan.trade.Cargo;
 import com.caravan.trade.Exchange;
 import com.caravan.trade.Receipt;
 import com.caravan.trade.Trader;
@@ -44,9 +45,10 @@ public final class RoundTrip {
         // 1e307 에 3만을 더해도 그대로 1e307 이다.
         Trader trader = new Trader("analysis", "분석",
                 exchange.quoteBuy(from, goodsId, quantity).net());
+        Cargo cargo = new Cargo();
 
-        Receipt bought = exchange.buy(trader, from, goodsId, quantity);
-        Receipt sold = exchange.sell(trader, to, goodsId, quantity);
+        Receipt bought = exchange.buy(trader, cargo, from, goodsId, quantity);
+        Receipt sold = exchange.sell(trader, cargo, to, goodsId, quantity);
 
         double profit = sold.net() - bought.net();
         double margin = profit / bought.net();

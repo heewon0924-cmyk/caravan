@@ -27,4 +27,14 @@ world:
   tradeTaxRate: 0.03
 
   # 상단의 시작 자본 (docs/10-성장과-목표.md 1장 — 개인 상인 단계)
+  # 캐러밴 용량 60 에 밀 부피가 1.0 이라 한 캐러밴이 약 6,200 G 다 —
+  # 첫 캐러밴을 꽉 채우고 3,800 G 가 남는다 (docs/22 3장).
   startingGold: 10000
+
+  # 캐러밴 (docs/05-캐러밴.md 4장, docs/03-이동과-시간.md 5장)
+  # capacity      : 실을 수 있는 총 부피
+  # loadSlowdown  : 가득 실었을 때 느려지는 비율 (0.4 = 40% 더 걸린다)
+  # travelCostPerHour : 노선 기본 소요시간 1시간당 출발비
+  caravanCapacity: 60
+  loadSlowdown: 0.4
+  travelCostPerHour: 30

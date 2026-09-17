@@ -1,6 +1,7 @@
 package com.caravan;
 
 import com.caravan.data.WorldData;
+import com.caravan.trade.Cargo;
 import com.caravan.trade.Exchange;
 import com.caravan.trade.Receipt;
 import com.caravan.trade.Trader;
@@ -36,8 +37,9 @@ class RoundTripEconomicsTest {
         Trader trader = new Trader("t", "시험",
                 exchange.quoteBuy(world.city("harn"), "wheat", quantity).net());
 
-        Receipt bought = exchange.buy(trader, world.city("harn"), "wheat", quantity);
-        Receipt sold = exchange.sell(trader, world.city("karden"), "wheat", quantity);
+        Cargo cargo = new Cargo();
+        Receipt bought = exchange.buy(trader, cargo, world.city("harn"), "wheat", quantity);
+        Receipt sold = exchange.sell(trader, cargo, world.city("karden"), "wheat", quantity);
 
         return (sold.net() - bought.net()) / bought.net();
     }
