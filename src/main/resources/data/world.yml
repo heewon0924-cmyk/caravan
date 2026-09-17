@@ -1,0 +1,21 @@
+# 세계 설정 — docs/03-이동과-시간.md 2·3장
+#
+# speed : 시간 배율. 현실 1분이 세계 몇 분인가
+#         60 = 개발·검증 (2시간 노선이 2분)
+#          6 = 프로토타입 플레이테스트 (2시간 노선이 20분)   ← 기본값
+#          1 = 정식 검토
+#
+#         배율을 바꿔도 밸런스는 그대로다. 생산·소비·이동이 전부 세계 시간
+#         기준이라 배율에 비례한다. 코드와 데이터의 모든 시간은 세계 시간으로만 적는다.
+#
+# granaryCapMultiple : 재고가 기준재고의 이 배수를 넘으면 초과분이 상한다
+# spoilRatePerTick   : 넘친 초과분이 매 틱 상하는 비율
+
+world:
+  speed: 6.0
+  granaryCapMultiple: 3.0
+  spoilRatePerTick: 0.05
+
+  # 가격 상하한 — 기준가의 배수 (docs/02-교역과-가격.md 2장)
+  priceFloorMultiple: 0.35
+  priceCeilingMultiple: 3.0

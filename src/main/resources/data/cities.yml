@@ -1,0 +1,85 @@
+# 도시와 시장 — docs/01-세계와-도시.md 4장, docs/02-교역과-가격.md 4장
+#
+# refStock         : 기준재고. 재고가 이 값이면 시세가 정확히 기준가다
+# productionPerDay : 세계시간 하루당 생산량
+# consumptionPerDay: 세계시간 하루당 소비량
+# initialStock     : 생략하면 refStock 으로 시작한다
+#
+# 세 도시 모두 혼자서는 굶는다. 하른은 밀만 남고 철이 없고, 카르덴은 철만 남고
+# 밀이 없다. 누군가 실어 나르지 않으면 셋 다 망한다 — 그게 플레이어가 있어야 할 이유다.
+
+cities:
+  - id: harn
+    name: 하른
+    trait: 평야 · 밀밭. 가장 안전하고 가장 심심하다. 수련처가 없다.
+    market:
+      - goods: wheat
+        refStock: 2000
+        productionPerDay: 720
+        consumptionPerDay: 240
+      - goods: iron
+        refStock: 200
+        productionPerDay: 0
+        consumptionPerDay: 60
+      - goods: salt
+        refStock: 250
+        productionPerDay: 0
+        consumptionPerDay: 80
+      - goods: cloth
+        refStock: 120
+        productionPerDay: 0
+        consumptionPerDay: 30
+      - goods: spice
+        refStock: 30
+        productionPerDay: 0
+        consumptionPerDay: 6
+
+  - id: karden
+    name: 카르덴
+    trait: 산기슭 · 광산. 철이 싸고 밀이 비싸다. 창 · 중장 계열 전직에 유리.
+    market:
+      - goods: wheat
+        refStock: 600
+        productionPerDay: 0
+        consumptionPerDay: 300
+      - goods: iron
+        refStock: 900
+        productionPerDay: 260
+        consumptionPerDay: 40
+      - goods: salt
+        refStock: 200
+        productionPerDay: 0
+        consumptionPerDay: 90
+      - goods: cloth
+        refStock: 120
+        productionPerDay: 0
+        consumptionPerDay: 40
+      - goods: spice
+        refStock: 30
+        productionPerDay: 0
+        consumptionPerDay: 8
+
+  - id: selia
+    name: 셀리아
+    trait: 항구. 가격 변동이 가장 크다. 해양 계열 전직에 유리.
+    market:
+      - goods: wheat
+        refStock: 700
+        productionPerDay: 0
+        consumptionPerDay: 260
+      - goods: iron
+        refStock: 250
+        productionPerDay: 0
+        consumptionPerDay: 70
+      - goods: salt
+        refStock: 600
+        productionPerDay: 180
+        consumptionPerDay: 60
+      - goods: cloth
+        refStock: 500
+        productionPerDay: 150
+        consumptionPerDay: 50
+      - goods: spice
+        refStock: 300
+        productionPerDay: 90
+        consumptionPerDay: 10

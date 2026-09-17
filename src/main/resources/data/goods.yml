@@ -1,0 +1,40 @@
+# 교역품 정의 — docs/02-교역과-가격.md 4장
+#
+# basePrice  : 세계 기준가. 재고가 기준재고와 같을 때의 값
+# elasticity : 탄력도. 클수록 재고 변화에 민감하다. 1.0 은 쓸 수 없다(적분식이 로그가 된다)
+# volume     : 1개당 부피. 캐러밴 적재 계산에 쓴다 (docs/05-캐러밴.md 4장)
+#
+# 밸런스를 바꾸려면 이 파일만 고친다. 코드는 건드리지 않는다.
+
+goods:
+  - id: wheat
+    name: 밀
+    basePrice: 100
+    elasticity: 0.6
+    volume: 1.0
+
+  - id: salt
+    name: 소금
+    basePrice: 140
+    elasticity: 0.6
+    volume: 0.8
+
+  - id: cloth
+    name: 옷감
+    basePrice: 320
+    elasticity: 0.7
+    volume: 0.5
+
+  - id: iron
+    name: 철
+    basePrice: 400
+    elasticity: 0.7
+    volume: 1.2
+
+  # 탄력도가 두 배다. 재고가 조금만 변해도 값이 크게 튄다 —
+  # 향신료는 '정보가 돈이 되는 품목'이고, 밀은 '꾸준한 품목'이다.
+  - id: spice
+    name: 향신료
+    basePrice: 900
+    elasticity: 1.2
+    volume: 0.2

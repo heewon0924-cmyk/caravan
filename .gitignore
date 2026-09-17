@@ -1,3 +1,7 @@
+# 빌드 산출물
+target/
+*.jar
+
 # OS
 .DS_Store
 Thumbs.db
