@@ -17,6 +17,9 @@ cities:
   - id: harn
     name: 하른
     trait: 평야 · 밀밭. 가장 안전하고 가장 심심하다. 수련처가 없다.
+    # training 이 비어 있으면 전직할 수 없다. 시작 도시에 수련처가 없는 것은
+    # 의도적이다 — 첫 전직을 하려면 반드시 한 번은 떠나야 한다 (docs/01 4.1).
+    training: {}
     market:
       - goods: wheat
         refStock: 2000
@@ -42,6 +45,10 @@ cities:
   - id: karden
     name: 카르덴
     trait: 산기슭 · 광산. 철이 싸고 밀이 비싸다. 창 · 중장 계열 전직에 유리.
+    # 대장간과 광산 경비대가 있다
+    training:
+      중장: 3.0
+      범용: 1.5
     market:
       - goods: wheat
         refStock: 600
@@ -67,6 +74,11 @@ cities:
   - id: selia
     name: 셀리아
     trait: 항구. 가격 변동이 가장 크다. 해양 계열 전직에 유리.
+    # 선원과 밀수꾼이 드나든다
+    training:
+      해양: 3.0
+      정보: 2.0
+      상인: 1.5
     market:
       - goods: wheat
         refStock: 700

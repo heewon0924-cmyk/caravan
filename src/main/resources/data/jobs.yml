@@ -1,0 +1,194 @@
+# 직업 트리 — docs/06-인물과-직업.md 4장, docs/07-전직.md
+#
+# 직업은 인물의 현재 성장 단계다. 이름과 외형은 인물에게 붙고 직업은 바뀐다 —
+# 전직해도 그 사람은 같은 사람이다. "내가 데리고 다니던 그 검사가 해적이 됐다" 가
+# 되어야 애착이 생긴다.
+#
+# family    : 계열. 도시 보정과 이벤트 보정이 계열 단위로 걸린다
+# roles     : 이 직업이 캐러밴에서 맡는 역할 (전투 · 상인 · 운송 · 정보 · 생산 · 특수)
+# stats     : 이 직업이 되면 더해지는 능력치 (무력 · 통찰 · 상재 · 인내)
+# transitions: 다음 단계 후보와 기본 가중치. 퍼센트가 아니라 가중치다 —
+#              보정을 곱한 뒤 정규화한다 (docs/07 2장)
+# awakensTo : 각성 후보. 최종 직업에서 고유 캐릭터가 된다
+#
+# 가중치를 쓰는 이유: 퍼센트를 더하면 100%를 넘거나 음수가 되는 걸 계속 막아야 하고,
+# 보정을 하나 추가할 때마다 기존 밸런스가 깨진다. 곱셈 가중치는 그럴 일이 없다.
+
+jobs:
+  # ── 1티어 · 기초 ─────────────────────────────────
+  - id: swordsman
+    name: 검사
+    tier: 1
+    family: 기초
+    roles: [전투]
+    stats: { might: 8, insight: 0, commerce: 0, grit: 4 }
+    transitions:
+      - to: pirate
+        weight: 40
+      - to: spearman
+        weight: 40
+      - to: mercenary
+        weight: 20
+
+  - id: porter
+    name: 짐꾼
+    tier: 1
+    family: 기초
+    roles: [운송]
+    stats: { might: 3, insight: 0, commerce: 0, grit: 10 }
+    transitions:
+      - to: caravaneer
+        weight: 60
+      - to: mercenary
+        weight: 40
+
+  - id: apprentice
+    name: 견습상인
+    tier: 1
+    family: 기초
+    roles: [상인]
+    stats: { might: 0, insight: 6, commerce: 9, grit: 2 }
+    transitions:
+      - to: broker
+        weight: 55
+      - to: scout
+        weight: 45
+
+  # ── 2티어 · 계열 ─────────────────────────────────
+  - id: pirate
+    name: 해적
+    tier: 2
+    family: 해양
+    roles: [전투, 운송]
+    stats: { might: 14, insight: 4, commerce: 4, grit: 10 }
+    transitions:
+      - to: pirate-king
+        weight: 100
+
+  - id: spearman
+    name: 창잡이
+    tier: 2
+    family: 중장
+    roles: [전투]
+    stats: { might: 18, insight: 2, commerce: 0, grit: 12 }
+    transitions:
+      - to: spear-god
+        weight: 100
+
+  - id: mercenary
+    name: 용병
+    tier: 2
+    family: 범용
+    roles: [전투, 운송]
+    stats: { might: 12, insight: 4, commerce: 2, grit: 14 }
+    transitions:
+      - to: guard-captain
+        weight: 100
+
+  - id: caravaneer
+    name: 대상꾼
+    tier: 2
+    family: 운송
+    roles: [운송, 상인]
+    stats: { might: 4, insight: 6, commerce: 8, grit: 20 }
+    transitions:
+      - to: road-master
+        weight: 100
+
+  - id: broker
+    name: 거간
+    tier: 2
+    family: 상인
+    roles: [상인]
+    stats: { might: 0, insight: 12, commerce: 20, grit: 4 }
+    transitions:
+      - to: merchant-prince
+        weight: 100
+
+  - id: scout
+    name: 정탐꾼
+    tier: 2
+    family: 정보
+    roles: [정보]
+    stats: { might: 4, insight: 20, commerce: 6, grit: 8 }
+    transitions:
+      - to: spymaster
+        weight: 100
+
+  # ── 3티어 · 정점 ─────────────────────────────────
+  # 모든 갈래에 정점이 있다. 하나라도 막다른 길이면 그 갈래가 나온 순간이
+  # "실패" 가 되고, docs/07 1장이 무너진다.
+  - id: pirate-king
+    name: 해적왕
+    tier: 3
+    family: 해양
+    roles: [전투, 운송, 특수]
+    stats: { might: 26, insight: 10, commerce: 10, grit: 20 }
+    awakensTo: [lian]
+
+  - id: spear-god
+    name: 창의신
+    tier: 3
+    family: 중장
+    roles: [전투, 특수]
+    stats: { might: 34, insight: 6, commerce: 0, grit: 24 }
+    awakensTo: [blasty]
+
+  - id: guard-captain
+    name: 호위대장
+    tier: 3
+    family: 범용
+    roles: [전투, 운송]
+    stats: { might: 22, insight: 10, commerce: 4, grit: 26 }
+
+  - id: road-master
+    name: 길잡이
+    tier: 3
+    family: 운송
+    roles: [운송, 정보]
+    stats: { might: 6, insight: 16, commerce: 14, grit: 34 }
+
+  - id: merchant-prince
+    name: 대상인
+    tier: 3
+    family: 상인
+    roles: [상인, 정보]
+    stats: { might: 0, insight: 22, commerce: 36, grit: 8 }
+
+  - id: spymaster
+    name: 정보수장
+    tier: 3
+    family: 정보
+    roles: [정보, 특수]
+    stats: { might: 6, insight: 38, commerce: 12, grit: 12 }
+
+# 고유 캐릭터 — 직업 트리의 끝에서 이름을 얻는다.
+#
+# 각성은 전직이 아니라 이름을 얻는 순간이다 (docs/06 4장). 지금은 최종 직업마다
+# 후보가 하나뿐이라 결정적이지만, 구조는 여럿을 받게 해 뒀다.
+# [미결] 무엇을 하면 리안이 되고 무엇을 하면 다른 해적왕이 되는가 (docs/90 4장)
+#
+# informationChannel 이 붙은 인물은 캐러밴의 정보 채널을 올린다.
+# 5단계가 남긴 답이 이것이다 — 믿을 만한 정보는 돈이 아니라 캐러밴 한 칸으로 산다.
+named:
+  - id: lian
+    name: 리안
+    title: 해적왕
+    stats: { might: 30, insight: 14, commerce: 16, grit: 24 }
+    roles: [전투, 운송, 특수]
+    trait: 뱃길
+    traitText: 해로 소요 -25%, 해상 습격 확률 -50%
+    skill: 후방 강습
+    skillText: 전투에서 적 후열을 먼저 친다
+    portTaxRelief: 0.01
+
+  - id: blasty
+    name: 블래스티
+    title: 창의신
+    stats: { might: 40, insight: 8, commerce: 2, grit: 28 }
+    roles: [전투, 특수]
+    trait: 홀로 선 창
+    traitText: 전열에 혼자 설 때 방어 +80%
+    skill: 관통
+    skillText: 전방 적 2명을 동시에 친다
+    landAmbushRelief: 0.30

@@ -5,6 +5,10 @@ import com.caravan.app.Simulation;
 import com.caravan.data.RouteSpec;
 import com.caravan.data.WorldData;
 import com.caravan.trade.Receipt;
+import com.caravan.people.Person;
+import com.caravan.people.Prospect;
+import com.caravan.people.Training;
+import com.caravan.people.TransferResult;
 import com.caravan.rumor.Rumor;
 import com.caravan.trade.TradeRefused;
 import com.caravan.travel.Departure;
@@ -99,6 +103,12 @@ public final class TradeConsole {
                 case "팔기", "sell" -> trade(token, false);
                 case "견적", "quote" -> quote(token);
                 case "길", "routes" -> routes();
+                case "사람", "crew" -> showCrew();
+                case "고용", "hire" -> hire(token);
+                case "해고", "dismiss" -> dismiss(token);
+                case "전망", "prospects" -> prospects(token);
+                case "전직", "transfer" -> transfer(token);
+                case "되돌리기", "revert" -> revert(token);
                 case "소문", "rumors" -> showRumors();
                 case "주점", "tavern" -> tavern();
                 case "정보상", "informant" -> informant();
@@ -124,6 +134,12 @@ public final class TradeConsole {
               사기 밀 60        산다        팔기 밀 60      판다
               견적 밀 60        사면 얼마인지만 본다 (아무것도 안 바뀐다)
               길                여기서 갈 수 있는 길들
+              사람              캐러밴에 탄 사람들
+              고용              이 도시에서 뽑을 수 있는 사람들  (고용 1 로 데려간다)
+              해고 2            내보낸다
+              전망 1 해적       1번을 해적으로 보내면 어떨지 (아무것도 안 바뀐다)
+              전직 1 해적 교관   전직을 시작한다 ('교관' 은 붙여도 되고 안 붙여도 된다)
+              되돌리기 1        이전 직업으로 되돌린다
               소문              지금 들고 있는 소문
               주점              한 잔 사며 듣는다 (방문당 한 번, 공짜, 믿을 게 못 된다)
               정보상            돈을 주고 앞일을 산다
@@ -233,6 +249,137 @@ public final class TradeConsole {
         }
     }
 
+    private void showCrew() {
+        out.println();
+        var crew = company.crew();
+        out.printf("  %s 의 사람들 (%d / %d)%n",
+                company.trader().name(), crew.size(), crew.slots());
+        if (crew.isEmpty()) {
+            out.println("    아무도 없다. '고용' 으로 사람을 구한다.");
+        }
+        int i = 1;
+        for (Person p : crew.members()) {
+            out.printf("    %d. %-22s %s%n", i++, p.displayName(), p.stats());
+            out.printf("       역할 %s%s%n", String.join(" · ", p.roles()),
+                    p.missedAll().isEmpty() ? "" : "   빗나간 기록 " + p.missedAll());
+        }
+        out.printf("    거래세 %.2f%%  ·  적재 칸 %.0f  ·  정보 %s%n",
+                company.effectiveTaxRate() * 100, company.effectiveCapacity(),
+                company.informationChannel().label());
+
+        Training training = company.training();
+        if (training != null) {
+            out.printf("    전직 중 — %s, %.0f%% (%s%s)%n",
+                    training.person().name(), training.progress(world.tick()) * 100,
+                    world.city(training.cityId()).name(),
+                    training.isRunning() ? "" : " · 멈춰 있다");
+        }
+    }
+
+    private void hire(String[] token) {
+        var candidates = company.candidates();
+        if (token.length < 2) {
+            out.println();
+            out.printf("  %s 에서 일자리를 찾는 사람들%n", company.here().name());
+            int i = 1;
+            for (Person p : candidates) {
+                out.printf("    %d. %-22s %s   역할 %s%n",
+                        i++, p.displayName(), p.stats(), String.join(" · ", p.roles()));
+            }
+            out.printf("    '고용 1' 처럼 번호를 준다. 한 명에 %s G%n",
+                    Text.money(data.rules().hireCost()));
+            return;
+        }
+        Person hired = company.hire(Integer.parseInt(token[1]) - 1);
+        out.printf("%n  %s 을(를) 데려왔다. %s%n", hired.displayName(), hired.stats());
+    }
+
+    private void dismiss(String[] token) {
+        if (token.length < 2) {
+            out.println("  해고 <번호>");
+            return;
+        }
+        Person person = member(Integer.parseInt(token[1]));
+        company.dismiss(person.id());
+        out.printf("%n  %s 을(를) 내보냈다.%n", person.displayName());
+    }
+
+    private void prospects(String[] token) {
+        if (token.length < 2) {
+            out.println("  전망 <번호> [목표]");
+            return;
+        }
+        Person person = member(Integer.parseInt(token[1]));
+        String aim = token.length > 2 ? jobId(token[2]) : null;
+        boolean tutor = has(token, "교관");
+
+        out.println();
+        out.printf("  %s 이(가) 갈 수 있는 곳%n", person.displayName());
+        for (Prospect p : company.prospects(person.id(), aim, tutor)) {
+            out.printf("    %s%n", p.name());
+            for (String reason : p.reasons()) {
+                out.printf("        · %s%n", reason);
+            }
+        }
+        out.println("    — 최종 확률은 알려주지 않는다. 위 요인을 보고 스스로 계산한다.");
+    }
+
+    private void transfer(String[] token) {
+        if (token.length < 2) {
+            out.println("  전직 <번호> [목표] [교관]");
+            return;
+        }
+        Person person = member(Integer.parseInt(token[1]));
+        String aim = token.length > 2 && !token[2].equals("교관") ? jobId(token[2]) : null;
+        boolean tutor = has(token, "교관");
+
+        double before = company.trader().gold();
+        Training training = company.beginTransfer(person.id(), aim, tutor);
+        out.println();
+        out.printf("  %s 이(가) %s 에서 수련을 시작했다.%n",
+                person.displayName(), world.city(training.cityId()).name());
+        out.printf("    %s G 를 냈다. 세계 시간 %.0f시간이 걸린다.%n",
+                Text.money(before - company.trader().gold()),
+                training.requiredTicks() * WorldClock.MINUTES_PER_TICK / 60.0);
+        out.println("    도시를 떠나면 그동안은 진행되지 않는다.");
+    }
+
+    private void revert(String[] token) {
+        if (token.length < 2) {
+            out.println("  되돌리기 <번호>");
+            return;
+        }
+        Person person = member(Integer.parseInt(token[1]));
+        String was = person.displayName();
+        double fee = company.revert(person.id());
+        out.printf("%n  %s → %s 으로 되돌렸다. %s G%n",
+                was, person.displayName(), Text.money(fee));
+        out.println("    빗나간 기록은 남는다 — 되돌릴수록 원하는 쪽이 가까워진다.");
+    }
+
+    private Person member(int number) {
+        var members = company.crew().members();
+        if (number < 1 || number > members.size()) {
+            throw new IllegalArgumentException("그런 번호가 없다: " + number);
+        }
+        return members.get(number - 1);
+    }
+
+    private String jobId(String token) {
+        return data.jobs().stream()
+                .filter(j -> j.id().equalsIgnoreCase(token) || j.name().equals(token))
+                .findFirst()
+                .map(com.caravan.data.JobSpec::id)
+                .orElseThrow(() -> new IllegalArgumentException("그런 직업이 없다: " + token));
+    }
+
+    private boolean has(String[] token, String word) {
+        for (String t : token) {
+            if (t.equals(word)) return true;
+        }
+        return false;
+    }
+
     private void showRumors() {
         List<Rumor> rumors = company.rumors();
         out.println();
@@ -306,13 +453,30 @@ public final class TradeConsole {
             for (Rumor r : company.takeFreshRumors()) {
                 out.printf("    들었다 — %s%n", r.display(world.tick()));
             }
+            announceTransfer();
             report.city(company.here());
         } else if (company.isTravelling()) {
             Journey j = company.journey();
             out.printf("  아직 가는 중 — %s 까지 %s 남았다%n",
                     world.city(j.toId()).name(), j.remainingText(world.tick()));
         } else {
+            announceTransfer();
             report.city(company.here());
+        }
+    }
+
+    /** 전직이 끝났으면 알린다. "실패했습니다" 가 아니라 "그는 용병이 되었다" 다. */
+    private void announceTransfer() {
+        TransferResult result = company.takeTransferResult();
+        if (result == null) {
+            return;
+        }
+        out.printf("%n  ★ %s%n", result.headline());
+        if (result.isAwakening()) {
+            out.printf("    %s — %s%n", result.awakened().trait(), result.awakened().traitText());
+            out.printf("    %s — %s%n", result.awakened().skill(), result.awakened().skillText());
+        } else if (!result.asAimed()) {
+            out.println("    노린 쪽은 아니다. 되돌려 다시 해볼 수도 있고, 이대로 데려갈 수도 있다.");
         }
     }
 

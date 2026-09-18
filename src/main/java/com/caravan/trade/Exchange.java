@@ -35,6 +35,15 @@ public final class Exchange {
      * 둘을 따로 받는 이유는 상단이 캐러밴을 여럿 굴릴 수 있기 때문이다.
      */
     public Receipt buy(Trader trader, Cargo cargo, City city, String goodsId, double quantity) {
+        return buy(trader, cargo, city, goodsId, quantity, taxRate);
+    }
+
+    /**
+     * 세율을 따로 준다. 상재가 높은 인물을 태우면 거래세가 깎이기 때문이다
+     * (docs/06 3장).
+     */
+    public Receipt buy(Trader trader, Cargo cargo, City city, String goodsId,
+                       double quantity, double taxRate) {
         Market market = city.market(goodsId);
         requirePositive(quantity);
 
@@ -63,6 +72,11 @@ public final class Exchange {
      * <p>가진 것보다 많이 팔려 하면 <b>재고를 건드리기 전에</b> 거절한다.
      */
     public Receipt sell(Trader trader, Cargo cargo, City city, String goodsId, double quantity) {
+        return sell(trader, cargo, city, goodsId, quantity, taxRate);
+    }
+
+    public Receipt sell(Trader trader, Cargo cargo, City city, String goodsId,
+                        double quantity, double taxRate) {
         Market market = city.market(goodsId);
         requirePositive(quantity);
 
@@ -87,6 +101,10 @@ public final class Exchange {
      * 어디로 갈지 고를 때도 이걸로 따진다.
      */
     public Receipt quoteBuy(City city, String goodsId, double quantity) {
+        return quoteBuy(city, goodsId, quantity, taxRate);
+    }
+
+    public Receipt quoteBuy(City city, String goodsId, double quantity, double taxRate) {
         Market market = city.market(goodsId);
         requirePositive(quantity);
 
@@ -100,6 +118,10 @@ public final class Exchange {
 
     /** 팔면 얼마인지만 계산한다. 아무것도 바꾸지 않는다. */
     public Receipt quoteSell(City city, String goodsId, double quantity) {
+        return quoteSell(city, goodsId, quantity, taxRate);
+    }
+
+    public Receipt quoteSell(City city, String goodsId, double quantity, double taxRate) {
         Market market = city.market(goodsId);
         requirePositive(quantity);
 

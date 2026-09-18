@@ -4,6 +4,8 @@ import com.caravan.data.WorldData;
 import com.caravan.event.EventEngine;
 import com.caravan.event.WorldEvent;
 import com.caravan.npc.NpcFleet;
+import com.caravan.people.HiringHall;
+import com.caravan.people.TransferOffice;
 import com.caravan.rumor.RumorMill;
 import com.caravan.world.World;
 import com.caravan.world.WorldClock;
@@ -35,6 +37,8 @@ public final class Simulation {
     private final EventEngine events;
     private final NpcFleet npcs;
     private final RumorMill mill;
+    private final HiringHall hall;
+    private final TransferOffice office;
     private final long seed;
 
     public Simulation(WorldData data) {
@@ -54,6 +58,8 @@ public final class Simulation {
         this.events = new EventEngine(data, seed);
         this.npcs = new NpcFleet(data);
         this.mill = new RumorMill(data, world, events, seed ^ 0x5L);
+        this.hall = new HiringHall(data, seed ^ 0x6L);
+        this.office = new TransferOffice(data, seed ^ 0x7L);
     }
 
     public void advanceTo(long targetTick) {
@@ -75,16 +81,28 @@ public final class Simulation {
 
     /** 새 상단 하나를 이 세계에 들인다. 소문도 같이 듣게 된다. */
     public Company newCompany(String name, String startCityId) {
-        return new Company(world, data, name, startCityId, mill);
+        Company company = new Company(world, data, name, startCityId, mill, hall, office);
+        company.observeEvents(events);
+        return company;
     }
 
     /** 소문을 못 듣는 상단. 정보의 값어치를 재는 대조군이다. */
     public Company newDeafCompany(String name, String startCityId) {
-        return new Company(world, data, name, startCityId, null);
+        Company company = new Company(world, data, name, startCityId, null, hall, office);
+        company.observeEvents(events);
+        return company;
     }
 
     public RumorMill rumorMill() {
         return mill;
+    }
+
+    public HiringHall hiringHall() {
+        return hall;
+    }
+
+    public TransferOffice transferOffice() {
+        return office;
     }
 
     public List<WorldEvent> activeEvents() {

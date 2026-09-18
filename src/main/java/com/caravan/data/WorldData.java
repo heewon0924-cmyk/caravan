@@ -29,30 +29,40 @@ public final class WorldData {
     private final List<CitySpec> cities;
     private final List<RouteSpec> routes;
     private final List<EventSpec> events;
+    private final Map<String, JobSpec> jobs;
+    private final Map<String, NamedSpec> named;
     private final WorldRules rules;
+    private final TransferRules transfer;
 
     private WorldData(Map<String, GoodsSpec> goods, List<CitySpec> cities,
-                      List<RouteSpec> routes, List<EventSpec> events, WorldRules rules) {
+                      List<RouteSpec> routes, List<EventSpec> events,
+                      Map<String, JobSpec> jobs, Map<String, NamedSpec> named,
+                      WorldRules rules, TransferRules transfer) {
         this.goods = goods;
         this.cities = cities;
         this.routes = routes;
         this.events = events;
+        this.jobs = jobs;
+        this.named = named;
         this.rules = rules;
+        this.transfer = transfer;
     }
 
     /** 클래스패스의 {@code data/} 에서 읽는다. */
     public static WorldData load() {
         return load("data/goods.yml", "data/cities.yml", "data/routes.yml",
-                "data/events.yml", "data/world.yml");
+                "data/events.yml", "data/jobs.yml", "data/world.yml");
     }
 
     public static WorldData load(String goodsPath, String citiesPath, String routesPath,
-                                 String eventsPath, String worldPath) {
+                                 String eventsPath, String jobsPath, String worldPath) {
         List<GoodsSpec> goodsList = read(goodsPath, GoodsFile.class).goods();
         List<CitySpec> cityList = read(citiesPath, CityFile.class).cities();
         List<RouteSpec> routeList = read(routesPath, RouteFile.class).routes();
         List<EventSpec> eventList = read(eventsPath, EventFile.class).events();
-        WorldRules rules = read(worldPath, WorldFile.class).world();
+        JobFile jobFile = read(jobsPath, JobFile.class);
+        WorldFile worldFile = read(worldPath, WorldFile.class);
+        WorldRules rules = worldFile.world();
 
         Map<String, GoodsSpec> byId = new LinkedHashMap<>();
         for (GoodsSpec g : goodsList) {
@@ -64,7 +74,72 @@ public final class WorldData {
         validate(byId, cityList);
         validateRoutes(routeList, cityList);
         validateEvents(eventList, byId, cityList, routeList);
-        return new WorldData(byId, cityList, routeList, eventList, rules);
+
+        Map<String, JobSpec> jobById = new LinkedHashMap<>();
+        for (JobSpec job : jobFile.jobs()) {
+            if (jobById.put(job.id(), job) != null) {
+                throw new IllegalStateException("직업 id 가 중복된다: " + job.id());
+            }
+        }
+        Map<String, NamedSpec> namedById = new LinkedHashMap<>();
+        for (NamedSpec n : jobFile.namedOrEmpty()) {
+            if (namedById.put(n.id(), n) != null) {
+                throw new IllegalStateException("고유 캐릭터 id 가 중복된다: " + n.id());
+            }
+        }
+        validateJobs(jobById, namedById, cityList);
+
+        return new WorldData(byId, cityList, routeList, eventList,
+                jobById, namedById, rules, worldFile.transfer());
+    }
+
+    private static void validateJobs(Map<String, JobSpec> jobs, Map<String, NamedSpec> named,
+                                     List<CitySpec> cities) {
+        if (jobs.isEmpty()) {
+            throw new IllegalStateException("직업이 하나도 없다");
+        }
+        java.util.Set<String> families = new java.util.LinkedHashSet<>();
+
+        for (JobSpec job : jobs.values()) {
+            families.add(job.family());
+            for (JobSpec.Transition t : job.nextSteps()) {
+                if (!jobs.containsKey(t.to())) {
+                    throw new IllegalStateException(
+                            job.name() + " 이 모르는 직업을 가리킨다: " + t.to());
+                }
+                if (t.weight() <= 0) {
+                    throw new IllegalStateException(
+                            job.name() + " → " + t.to() + " 의 가중치가 0 이하다");
+                }
+            }
+            if (job.canAwaken()) {
+                for (String id : job.awakensTo()) {
+                    if (!named.containsKey(id)) {
+                        throw new IllegalStateException(
+                                job.name() + " 이 모르는 고유 캐릭터를 가리킨다: " + id);
+                    }
+                }
+            }
+            // 막다른 길이 있으면 그 갈래가 나온 순간이 "실패" 가 된다.
+            // 모든 갈래에 쓸모가 있어야 랜덤 전직이 성립한다 (docs/07 1장).
+            if (job.isFinal() && !job.canAwaken() && job.tier() < 3) {
+                throw new IllegalStateException(
+                        job.name() + " 은 다음 단계도 각성도 없는 막다른 길이다");
+            }
+        }
+
+        // 도시의 수련처가 있지도 않은 계열을 가리키면 조용히 아무 일도 안 일어난다
+        for (CitySpec city : cities) {
+            if (city.training() == null) {
+                continue;
+            }
+            for (String family : city.training().keySet()) {
+                if (!families.contains(family)) {
+                    throw new IllegalStateException(
+                            city.name() + " 의 수련처가 모르는 계열을 가리킨다: " + family);
+                }
+            }
+        }
     }
 
     private static void validateEvents(List<EventSpec> events, Map<String, GoodsSpec> goods,
@@ -228,6 +303,35 @@ public final class WorldData {
     public List<CitySpec> cities() { return List.copyOf(cities); }
     public List<RouteSpec> routes() { return List.copyOf(routes); }
     public List<EventSpec> events() { return List.copyOf(events); }
+    public List<JobSpec> jobs() { return List.copyOf(jobs.values()); }
+    public List<NamedSpec> namedCharacters() { return List.copyOf(named.values()); }
+    public TransferRules transfer() { return transfer; }
+
+    public JobSpec job(String id) {
+        JobSpec spec = jobs.get(id);
+        if (spec == null) {
+            throw new IllegalArgumentException("그런 직업이 없다: " + id);
+        }
+        return spec;
+    }
+
+    public NamedSpec namedCharacter(String id) {
+        NamedSpec spec = named.get(id);
+        if (spec == null) {
+            throw new IllegalArgumentException("그런 고유 캐릭터가 없다: " + id);
+        }
+        return spec;
+    }
+
+    /** 1티어 직업들. 도시에서 고용할 수 있는 사람들이 이 중 하나를 달고 온다. */
+    public List<JobSpec> startingJobs() {
+        return jobs.values().stream().filter(j -> j.tier() == 1).toList();
+    }
+
+    public CitySpec city(String id) {
+        return cities.stream().filter(c -> c.id().equals(id)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("그런 도시가 없다: " + id));
+    }
 
     /** {@code cityId} 에서 떠날 수 있는 노선들. */
     public List<RouteSpec> routesFrom(String cityId) {
@@ -252,5 +356,11 @@ public final class WorldData {
     record CityFile(List<CitySpec> cities) { }
     record RouteFile(List<RouteSpec> routes) { }
     record EventFile(List<EventSpec> events) { }
-    record WorldFile(WorldRules world) { }
+
+    record JobFile(List<JobSpec> jobs, List<NamedSpec> named) {
+        List<NamedSpec> namedOrEmpty() {
+            return named == null ? List.of() : named;
+        }
+    }
+    record WorldFile(WorldRules world, TransferRules transfer) { }
 }

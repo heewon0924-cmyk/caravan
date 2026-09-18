@@ -23,6 +23,9 @@ public final class Caravan {
     private String cityId;
     private Journey journey;
 
+    /** 탄 사람들이 늘려주는 적재 용량. 인내가 높을수록 더 싣는다 (docs/06 3장). */
+    private double capacityBonus;
+
     public Caravan(String id, String name, double capacity, String startCityId) {
         this.id = id;
         this.name = name;
@@ -77,17 +80,28 @@ public final class Caravan {
         return cargo.volume(goods);
     }
 
-    /** 0.0(빈 캐러밴) ~ 1.0(가득). */
+    /**
+     * 0.0(빈 캐러밴) ~ 1.0(가득).
+     *
+     * <p>{@code capacity} 필드가 아니라 {@link #capacity()} 를 쓴다 —
+     * 탄 사람들이 늘려준 만큼이 빠지면 적재 칸만 늘고 실을 수는 없게 된다.
+     */
     public double loadRatio(Map<String, GoodsSpec> goods) {
-        return load(goods) / capacity;
+        return load(goods) / capacity();
     }
 
     public double freeSpace(Map<String, GoodsSpec> goods) {
-        return capacity - load(goods);
+        return capacity() - load(goods);
+    }
+
+    /** {@code Company} 가 인원이 바뀔 때마다 다시 계산해서 넣는다. */
+    public void setCapacityBonus(double bonus) {
+        this.capacityBonus = Math.max(0, bonus);
     }
 
     public String id() { return id; }
     public String name() { return name; }
-    public double capacity() { return capacity; }
+    public double capacity() { return capacity + capacityBonus; }
+    public double baseCapacity() { return capacity; }
     public Cargo cargo() { return cargo; }
 }

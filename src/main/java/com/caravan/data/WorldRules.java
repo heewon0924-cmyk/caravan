@@ -16,6 +16,9 @@ package com.caravan.data;
  * @param npcCaravanCapacity   NPC 짐수레 용량. 플레이어보다 작다
  * @param npcStartingGold      NPC 한 명의 밑천
  * @param npcTemperaments      NPC 성격별 설정. count 합계가 인원이다
+ * @param crewSlots            캐러밴에 탈 수 있는 인물 수
+ * @param hireCost             인물 한 명을 고용하는 값
+ * @param hireCandidates       도시마다 대기 중인 인물 수
  * @param informantFee         정보상에게 한 번 묻는 값
  * @param eventsPerDay         세계 하루당 평균 이벤트 발생 수
  * @param maxConcurrentEvents  동시에 진행될 수 있는 이벤트 수
@@ -31,6 +34,12 @@ public record WorldRules(double speed,
                          double loadSlowdown,
                          double travelCostPerHour,
                          double npcCaravanCapacity,
+                         int crewSlots,
+                         double hireCost,
+                         int hireCandidates,
+                         double crewTaxReliefPerCommerce,
+                         double crewTaxReliefCap,
+                         double crewCapacityPerGrit,
                          double npcStartingGold,
                          java.util.List<TemperamentSpec> npcTemperaments,
                          double informantFee,
@@ -70,6 +79,12 @@ public record WorldRules(double speed,
         }
         if (maxConcurrentEvents < 0) {
             throw new IllegalArgumentException("동시 이벤트 수는 음수일 수 없다: " + maxConcurrentEvents);
+        }
+        if (crewSlots <= 0) {
+            throw new IllegalArgumentException("캐러밴 인원 칸은 0보다 커야 한다: " + crewSlots);
+        }
+        if (crewTaxReliefCap < 0 || crewTaxReliefCap > 1) {
+            throw new IllegalArgumentException("거래세 감면 상한은 0~1 이어야 한다");
         }
         if (npcTemperaments == null || npcTemperaments.isEmpty()) {
             throw new IllegalArgumentException("NPC 성격이 하나도 정의되지 않았다");

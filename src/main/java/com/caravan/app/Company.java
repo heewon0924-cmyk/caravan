@@ -1,7 +1,10 @@
 package com.caravan.app;
 
+import com.caravan.data.JobSpec;
+import com.caravan.data.NamedSpec;
 import com.caravan.data.RouteSpec;
 import com.caravan.data.WorldData;
+import com.caravan.event.EventEngine;
 import com.caravan.trade.Exchange;
 import com.caravan.trade.Receipt;
 import com.caravan.trade.TradeRefused;
@@ -12,11 +15,20 @@ import com.caravan.travel.Journey;
 import com.caravan.travel.Travel;
 import com.caravan.travel.TravelRefused;
 import com.caravan.world.City;
+import com.caravan.people.Crew;
+import com.caravan.people.HiringHall;
+import com.caravan.people.Person;
+import com.caravan.people.Prospect;
+import com.caravan.people.Stats;
+import com.caravan.people.Training;
+import com.caravan.people.TransferOffice;
+import com.caravan.people.TransferResult;
 import com.caravan.rumor.Rumor;
 import com.caravan.rumor.RumorBoard;
 import com.caravan.rumor.RumorMill;
 import com.caravan.rumor.Source;
 import com.caravan.world.World;
+import com.caravan.world.WorldClock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +62,16 @@ public final class Company {
     private final Travel travel;
     private final RumorMill mill;
     private final RumorBoard rumors = new RumorBoard();
+    private final HiringHall hall;
+    private final TransferOffice office;
+    private EventEngine events;
+    private final Crew crew;
+
+    /** 진행 중인 전직. 한 번에 하나뿐이다 — 그래야 "지금 누구를" 이 결정이 된다. */
+    private Training training;
+
+    /** 막 끝난 전직 결과. 화면이 한 번 읽어가면 비운다. */
+    private TransferResult lastResult;
 
     /** 마지막으로 머물던 도시. 도착을 알아채는 데 쓴다. */
     private String lastCityId;
@@ -61,13 +83,19 @@ public final class Company {
     private final List<Rumor> freshlyHeard = new ArrayList<>();
 
     public Company(World world, WorldData data, String name, String startCityId) {
-        this(world, data, name, startCityId, null);
+        this(world, data, name, startCityId, null, null, null);
     }
 
-    /** 이 상단이 가진 정보 채널의 품질. 6단계에서 정보 계열 인물이 이걸 올린다. */
-    private Source channel = Source.떠도는말;
+    public Company(World world, WorldData data, String name, String startCityId,
+                   RumorMill mill) {
+        this(world, data, name, startCityId, mill, null, null);
+    }
 
-    public Company(World world, WorldData data, String name, String startCityId, RumorMill mill) {
+    /** 시험에서만 쓰는 강제 지정. 평소에는 인물이 채널을 정한다. */
+    private Source override;
+
+    public Company(World world, WorldData data, String name, String startCityId,
+                   RumorMill mill, HiringHall hall, TransferOffice office) {
         this.world = world;
         this.data = data;
         this.trader = new Trader("player", name, data.rules().startingGold());
@@ -76,7 +104,215 @@ public final class Company {
         this.exchange = new Exchange(data.rules());
         this.travel = new Travel(data);
         this.mill = mill;
+        this.hall = hall;
+        this.office = office;
+        this.crew = new Crew(data.rules().crewSlots());
         this.lastCityId = startCityId;
+    }
+
+    // ── 사람 ────────────────────────────────────────────
+
+    /** 이 도시에서 고용할 수 있는 사람들. */
+    public List<Person> candidates() {
+        City city = requireAtCity();
+        return hall == null ? List.of() : hall.candidates(city.id());
+    }
+
+    /** 한 명을 데려간다. */
+    public Person hire(int index) {
+        City city = requireAtCity();
+        if (hall == null) {
+            throw new TradeRefused("이 세계에는 고용할 사람이 없다");
+        }
+        if (crew.isFull()) {
+            throw new TradeRefused(String.format(
+                    "캐러밴에 자리가 없다: %d / %d. 누군가를 내려야 한다",
+                    crew.size(), crew.slots()));
+        }
+        trader.pay(data.rules().hireCost());
+        Person hired = hall.hire(city.id(), index);
+        crew.add(hired);
+        return hired;
+    }
+
+    /** 내보낸다. 전직 중인 사람은 못 내보낸다. */
+    public void dismiss(String personId) {
+        Person person = crew.byId(personId);
+        if (training != null && training.person() == person) {
+            throw new TradeRefused(person.name() + " 은 지금 전직 중이다");
+        }
+        crew.remove(person);
+    }
+
+    public Crew crew() {
+        syncArrival();
+        return crew;
+    }
+
+    // ── 전직 ────────────────────────────────────────────
+
+    /**
+     * 이 도시에서 이 인물이 갈 수 있는 곳들과 그 근거.
+     *
+     * <p><b>합산된 최종 확률은 들어 있지 않다.</b> 플레이어가 스스로 계산한다
+     * (docs/07 3장).
+     */
+    public List<Prospect> prospects(String personId, String aim, boolean tutor) {
+        City city = requireAtCity();
+        Person person = crew.byId(personId);
+        requireTrainingGround(city);
+        return office.prospects(person, data.city(city.id()), aim, tutor,
+                eventJobBonuses());
+    }
+
+    /**
+     * 전직을 시작한다. <b>도시에 머무는 동안에만 진행된다.</b>
+     *
+     * @param aim   노리는 직업 id. 교관 보정이 여기에만 붙는다. {@code null} 이면 아무거나
+     * @param tutor 교관을 붙이는가. 비용이 더 들지만 원하는 쪽 가중치가 오른다
+     */
+    public Training beginTransfer(String personId, String aim, boolean tutor) {
+        City city = requireAtCity();
+        Person person = crew.byId(personId);
+        requireTrainingGround(city);
+
+        if (training != null) {
+            throw new TradeRefused(
+                    training.person().name() + " 이 이미 전직 중이다. 한 번에 한 명이다");
+        }
+        if (person.isAwakened()) {
+            throw new TradeRefused(person.displayName() + " 은 더 갈 곳이 없다");
+        }
+
+        boolean awakening = person.jobSpec().isFinal() && person.jobSpec().canAwaken();
+        if (person.jobSpec().isFinal() && !awakening) {
+            throw new TradeRefused(person.displayName() + " 은 더 갈 곳이 없다");
+        }
+
+        int targetTier = awakening ? 4 : person.jobSpec().tier() + 1;
+        double cost = awakening
+                ? data.transfer().costAwaken()
+                : data.transfer().costTo(targetTier);
+        double hours = awakening
+                ? data.transfer().hoursAwaken()
+                : data.transfer().hoursTo(targetTier);
+        if (tutor && !awakening) {
+            cost *= 1 + data.transfer().tutorSurcharge();
+        }
+
+        trader.pay(cost);
+        long ticks = Math.max(1, Math.round(hours * 60 / WorldClock.MINUTES_PER_TICK));
+        training = new Training(person, city.id(), aim, tutor && !awakening,
+                ticks, cost, world.tick());
+        return training;
+    }
+
+    /** 진행 중인 전직. 없으면 {@code null}. */
+    public Training training() {
+        syncArrival();
+        return training;
+    }
+
+    /** 막 끝난 전직 결과. 한 번 읽으면 비워진다. */
+    public TransferResult takeTransferResult() {
+        syncArrival();
+        TransferResult result = lastResult;
+        lastResult = null;
+        return result;
+    }
+
+    /**
+     * 이전 직업으로 되돌린다.
+     *
+     * <p>천장은 유지된다 — 되돌릴수록 원하는 결과가 가까워진다 (docs/07 6장).
+     * 되돌릴 때마다 값이 오르므로 "새 사람을 구할 것인가" 와 저울질하게 된다.
+     */
+    public double revert(String personId) {
+        requireAtCity();
+        Person person = crew.byId(personId);
+        if (training != null && training.person() == person) {
+            throw new TradeRefused(person.name() + " 은 지금 전직 중이다");
+        }
+        if (!person.canRevert()) {
+            throw new TradeRefused(person.displayName() + " 은 더 되돌아갈 곳이 없다");
+        }
+
+        double previousCost = person.revert();
+        double fee = previousCost * data.transfer().revertCostRatio()
+                * Math.pow(data.transfer().revertCostGrowth(), person.reverts() - 1);
+        trader.pay(fee);
+        return fee;
+    }
+
+    private void requireTrainingGround(City city) {
+        if (office == null || !data.city(city.id()).hasTrainingGround()) {
+            throw new TradeRefused(city.name() + " 에는 수련처가 없다");
+        }
+    }
+
+    /** 진행 중인 사건이 계열에 주는 보너스. '해적 창궐' 이면 해양 계열이 유리해진다. */
+    private java.util.Map<String, Double> eventJobBonuses() {
+        return events == null ? java.util.Map.of() : events.jobFamilyBonuses();
+    }
+
+    /** {@code Simulation} 이 상단을 만들 때 걸어 준다. */
+    public void observeEvents(EventEngine engine) {
+        this.events = engine;
+    }
+
+    /** 도시에 머무는 동안만 전직이 진행된다. 이동 중에는 멈춘다. */
+    private void accrueTraining() {
+        caravan.setCapacityBonus(crew.total().grit() * data.rules().crewCapacityPerGrit());
+        if (training == null) {
+            return;
+        }
+        String cityId = caravan.cityId(world.tick());
+        if (cityId != null && cityId.equals(training.cityId())) {
+            training.resume(world.tick());
+            training.accrue(world.tick());
+        } else {
+            training.pause(world.tick());
+        }
+        if (training.isDone(world.tick())) {
+            lastResult = finish(training);
+            training = null;
+        }
+    }
+
+    private TransferResult finish(Training done) {
+        Person person = done.person();
+        String fromName = person.job().name();
+
+        if (person.jobSpec().canAwaken()) {
+            NamedSpec spec = data.namedCharacter(person.jobSpec().awakensTo().get(0));
+            person.awaken(spec);
+            return new TransferResult(person, fromName, spec.fullName(),
+                    done.aim(), true, spec);
+        }
+
+        List<Prospect> prospects = office.prospects(person, data.city(done.cityId()),
+                done.aim(), done.tutor(), eventJobBonuses());
+        JobSpec drawn = office.draw(prospects);
+        person.transitionTo(new com.caravan.people.Job(drawn), done.aim(), done.cost());
+
+        boolean asAimed = done.aim() == null || done.aim().equals(drawn.id());
+        return new TransferResult(person, fromName, drawn.name(), done.aim(), asAimed, null);
+    }
+
+    // ── 사람이 캐러밴에 주는 것 ───────────────────────────
+
+    /** 상재가 높을수록 거래세가 깎인다. */
+    public double effectiveTaxRate() {
+        syncArrival();
+        double relief = Math.min(data.rules().crewTaxReliefCap(),
+                crew.total().commerce() * data.rules().crewTaxReliefPerCommerce());
+        return data.rules().tradeTaxRate() * (1 - relief);
+    }
+
+    /** 인내가 높을수록 더 싣는다. */
+    public double effectiveCapacity() {
+        syncArrival();
+        return caravan.capacity();
     }
 
     // ── 소문 ────────────────────────────────────────────
@@ -90,15 +326,17 @@ public final class Company {
      */
     private void syncArrival() {
         if (mill == null) {
+            accrueTraining();
             return;
         }
+        accrueTraining();
         String cityId = caravan.cityId(world.tick());
         if (cityId == null || cityId.equals(lastCityId)) {
             return;
         }
         lastCityId = cityId;
         tavernUsedHere = false;
-        for (Rumor r : mill.onArrival(world.city(cityId), channel, world.tick())) {
+        for (Rumor r : mill.onArrival(world.city(cityId), informationChannel(), world.tick())) {
             rumors.add(r);
             freshlyHeard.add(r);
         }
@@ -111,11 +349,22 @@ public final class Company {
      * 똑같은 두 상단이 필요하기 때문이다.
      */
     public void setInformationChannel(Source source) {
-        this.channel = source;
+        this.override = source;
     }
 
+    /**
+     * 지금 이 상단의 정보 채널.
+     *
+     * <p><b>5단계가 남긴 답이 여기서 닫힌다</b> — 믿을 만한 정보는 돈으로 살 수 없고
+     * 캐러밴 여섯 칸 중 하나로 산다 (docs/25 3장 (라)). 정보 역할을 가진 인물을
+     * 태우면 채널이 올라가고, 그러면 호위나 상인을 한 명 포기해야 한다.
+     * 정보의 값이 금액이 아니라 <b>자리</b>가 되므로 자본이 커져도 희석되지 않는다.
+     */
     public Source informationChannel() {
-        return channel;
+        if (override != null) {
+            return override;
+        }
+        return crew.withRole("정보").isEmpty() ? Source.떠도는말 : Source.정보원;
     }
 
     /** 막 도착해서 들은 것들. 한 번 읽으면 비워진다. */
@@ -205,19 +454,20 @@ public final class Company {
                     free, needed, data.goods(goodsId).name(), fmt(quantity)));
         }
 
-        return exchange.buy(trader, caravan.cargo(), city, goodsId, quantity);
+        return exchange.buy(trader, caravan.cargo(), city, goodsId, quantity, effectiveTaxRate());
     }
 
     public Receipt sell(String goodsId, double quantity) {
-        return exchange.sell(trader, caravan.cargo(), requireAtCity(), goodsId, quantity);
+        return exchange.sell(trader, caravan.cargo(), requireAtCity(), goodsId, quantity,
+                effectiveTaxRate());
     }
 
     public Receipt quoteBuy(String goodsId, double quantity) {
-        return exchange.quoteBuy(requireAtCity(), goodsId, quantity);
+        return exchange.quoteBuy(requireAtCity(), goodsId, quantity, effectiveTaxRate());
     }
 
     public Receipt quoteSell(String goodsId, double quantity) {
-        return exchange.quoteSell(requireAtCity(), goodsId, quantity);
+        return exchange.quoteSell(requireAtCity(), goodsId, quantity, effectiveTaxRate());
     }
 
     /** 남은 부피로 이 품목을 몇 개나 더 실을 수 있는가. */
@@ -260,12 +510,27 @@ public final class Company {
                     world.city(destinationCityId).name(), options.size(),
                     String.join(", ", options.stream().map(RouteSpec::name).toList())));
         }
-        return travel.depart(trader, caravan, world.tick(), options.get(0));
+        return leave(options.get(0));
     }
 
     public Departure departVia(RouteSpec route) {
         requireAtCityForTravel();
-        return travel.depart(trader, caravan, world.tick(), route);
+        return leave(route);
+    }
+
+    /**
+     * 떠난다. 전직은 여기서 멈춘다.
+     *
+     * <p>떠날 때 명시적으로 멈추지 않으면, 돌아왔을 때 <b>이동한 시간까지 전직에
+     * 쌓여 버린다</b> — 캐러밴은 도착 처리를 읽을 때 하므로 중간에 아무도 정산해
+     * 주지 않기 때문이다.
+     */
+    private Departure leave(RouteSpec route) {
+        Departure departure = travel.depart(trader, caravan, world.tick(), route);
+        if (training != null) {
+            training.pause(world.tick());
+        }
+        return departure;
     }
 
     public RouteSpec route(String routeIdOrName) {
@@ -295,7 +560,8 @@ public final class Company {
             return trader.gold();
         }
         double cargoValue = caravan.cargo().all().entrySet().stream()
-                .mapToDouble(e -> exchange.quoteSell(city, e.getKey(), e.getValue()).net())
+                .mapToDouble(e -> exchange.quoteSell(city, e.getKey(), e.getValue(),
+                        effectiveTaxRate()).net())
                 .sum();
         return trader.gold() + cargoValue;
     }
